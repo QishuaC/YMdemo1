@@ -521,7 +521,7 @@ function switchModule(moduleName) {
   document.querySelectorAll('.module').forEach((node) => {
     node.classList.toggle('active', node.id === `${moduleName}Module`);
   });
-  if (moduleName === 'comments') {
+  if (moduleName === 'videos') {
     updateDeleteSelectedButton();
   }
   if (moduleName === 'points') {
@@ -1021,7 +1021,7 @@ function updateDeleteSelectedButton() {
     btn.style.display = state.selectedComments.length > 0 ? 'inline-block' : 'none';
   }
   const selectAllCheckbox = byId('selectAllComments');
-  if (selectAllCheckbox && state.module === 'comments') {
+  if (selectAllCheckbox && state.module === 'videos') {
     let rows = state.rows.comments || [];
     if (state.commentVideoFilter) {
       rows = rows.filter(row => row.videoId === state.commentVideoFilter);
@@ -1376,11 +1376,17 @@ function bindEvents() {
     if (target.classList.contains('view-comments-link')) {
       const videoId = target.dataset.videoId;
       state.commentVideoFilter = videoId;
-      await switchModule('comments');
-      await fetchModule('comments');
+      state.selectedComments = [];
+      await switchModule('videos');
       const select = byId('commentVideoFilter');
       if (select) {
         select.value = videoId;
+      }
+      await fetchModule('comments');
+      updateDeleteSelectedButton();
+      const panel = byId('videoCommentsPanel');
+      if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
   }, true);

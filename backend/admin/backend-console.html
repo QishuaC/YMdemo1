@@ -19,7 +19,6 @@
 
     <aside class="sidebar">
       <button class="menu-item active" data-module="videos">视频管理</button>
-      <button class="menu-item" data-module="comments">评论管理</button>
       <button class="menu-item" data-module="articles">文章管理</button>
       <button class="menu-item" data-module="products">商品管理</button>
       <button class="menu-item" data-module="orders">订单管理</button>
@@ -65,36 +64,35 @@
             <tbody id="videosTable"></tbody>
           </table>
         </div>
-      </section>
-
-      <section id="commentsModule" class="module">
-        <div class="module-head">
-          <h2>评论管理</h2>
-          <div class="module-actions">
-            <div class="filter-wrap">
-              <label for="commentVideoFilter">按视频筛选：</label>
-              <select id="commentVideoFilter">
-                <option value="">全部</option>
-              </select>
+        <div class="embedded-comments-block" id="videoCommentsPanel">
+          <div class="module-head embedded-comments-head">
+            <h2>评论管理</h2>
+            <div class="module-actions">
+              <div class="filter-wrap">
+                <label for="commentVideoFilter">按视频筛选：</label>
+                <select id="commentVideoFilter">
+                  <option value="">全部</option>
+                </select>
+              </div>
+              <button id="deleteSelectedCommentsBtn" class="btn danger" style="display: none;">批量删除</button>
             </div>
-            <button id="deleteSelectedCommentsBtn" class="btn danger" style="display: none;">批量删除</button>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="selectAllComments"></th>
-                <th>用户</th>
-                <th>视频</th>
-                <th>内容</th>
-                <th>点赞</th>
-                <th>时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="commentsTable"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="selectAllComments"></th>
+                  <th>用户</th>
+                  <th>视频</th>
+                  <th>内容</th>
+                  <th>点赞</th>
+                  <th>时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="commentsTable"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
