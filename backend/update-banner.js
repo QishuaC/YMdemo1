@@ -18,12 +18,20 @@ db.uiConfig.shopBanners = [
   {
     id: 1,
     image: '/uploads/userID/微信图片_20260313123251_25_138.jpg',
-    targetPage: ''
+    targetPage: '',
+    title: '限时优惠',
+    subtitle: '精选好物等你来',
+    btnText: '立即抢购',
+    btnColor: '#ffc107'
   },
   {
     id: 2,
     image: '/uploads/1773372985872_34044.jpg',
-    targetPage: ''
+    targetPage: '',
+    title: '',
+    subtitle: '',
+    btnText: '立即抢购',
+    btnColor: '#ffc107'
   }
 ];
 

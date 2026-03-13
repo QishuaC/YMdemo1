@@ -41,6 +41,8 @@ Page({
           id: item.id || (index + 1),
           title: item.title || '',
           subtitle: item.subtitle || '',
+          btnText: item.btnText || '立即抢购',
+          btnColor: item.btnColor || '#ffc107',
           image: item.image.startsWith('http') ? item.image : this.data.baseUrl + item.image,
           targetPage: item.targetPage || '',
           bgColor: item.bgColor || '#ffffff'

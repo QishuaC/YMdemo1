@@ -5,7 +5,9 @@ const mockBanners = [
     subtitle: '百年传承·匠心酿造',
     image: 'https://picsum.photos/800/300?random=100',
     productId: 1,
-    bgColor: '#8b0000'
+    bgColor: '#8b0000',
+    btnText: '立即抢购',
+    btnColor: '#ffc107'
   },
   {
     id: 2,
@@ -13,7 +15,9 @@ const mockBanners = [
     subtitle: '传统工艺·精品之作',
     image: 'https://picsum.photos/800/300?random=101',
     productId: 3,
-    bgColor: '#2d5a27'
+    bgColor: '#2d5a27',
+    btnText: '立即抢购',
+    btnColor: '#ffc107'
   },
   {
     id: 3,
@@ -21,7 +25,9 @@ const mockBanners = [
     subtitle: '绿色有机·健康生活',
     image: 'https://picsum.photos/800/300?random=102',
     productId: 4,
-    bgColor: '#c4a000'
+    bgColor: '#c4a000',
+    btnText: '立即抢购',
+    btnColor: '#ffc107'
   }
 ];
 

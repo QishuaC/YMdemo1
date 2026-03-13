@@ -18,6 +18,8 @@ const state = {
   selectedComments: [],
   selectedOrders: []
 };
+const loadedModules = new Set();
+const moduleLoadingTasks = {};
 const SERVICE_TAG_OPTIONS = ['7天无理由', '运费险', '正品保障'];
 
 const ORDER_STATUS_MAP = {
@@ -511,6 +513,37 @@ async function refreshAll() {
     fetchModule('exchange-products'),
     fetchPointsUsers()
   ]);
+  loadedModules.add('videos');
+  loadedModules.add('articles');
+  loadedModules.add('products');
+  loadedModules.add('orders');
+  loadedModules.add('users');
+  loadedModules.add('comments');
+  loadedModules.add('exchange-products');
+  loadedModules.add('points');
+}
+
+async function ensureModuleData(moduleName, force = false) {
+  if (!force && loadedModules.has(moduleName)) {
+    return;
+  }
+  if (!force && moduleLoadingTasks[moduleName]) {
+    return moduleLoadingTasks[moduleName];
+  }
+  const loadTask = (async () => {
+    if (moduleName === 'points') {
+      await fetchPointsUsers();
+    } else {
+      await fetchModule(moduleName);
+    }
+    loadedModules.add(moduleName);
+  })();
+  moduleLoadingTasks[moduleName] = loadTask;
+  try {
+    await loadTask;
+  } finally {
+    delete moduleLoadingTasks[moduleName];
+  }
 }
 
 function switchModule(moduleName) {
@@ -523,9 +556,23 @@ function switchModule(moduleName) {
   });
   if (moduleName === 'videos') {
     updateDeleteSelectedButton();
+    ensureModuleData('videos').catch((error) => {
+      alert(error.message || '加载视频数据失败');
+    });
+    ensureModuleData('comments').catch((error) => {
+      alert(error.message || '加载评论数据失败');
+    });
   }
   if (moduleName === 'points') {
-    fetchPointsUsers();
+    ensureModuleData('points').catch((error) => {
+      alert(error.message || '加载积分数据失败');
+    });
+    return;
+  }
+  if (moduleName !== 'videos') {
+    ensureModuleData(moduleName).catch((error) => {
+      alert(error.message || '加载模块数据失败');
+    });
   }
 }
 
@@ -1145,6 +1192,10 @@ async function fetchUiConfig() {
 
     byId('uiShopBanner1ImageInput').value = banner1.image || '';
     byId('uiShopBanner1TargetInput').value = banner1.targetPage || '';
+    byId('uiShopBanner1TitleInput').value = banner1.title || '';
+    byId('uiShopBanner1SubtitleInput').value = banner1.subtitle || '';
+    byId('uiShopBanner1BtnTextInput').value = banner1.btnText || '立即抢购';
+    byId('uiShopBanner1BtnColorInput').value = banner1.btnColor || '#ffc107';
     if (banner1.image) {
       byId('uiShopBanner1Preview').src = banner1.image;
       byId('uiShopBanner1Preview').style.display = 'block';
@@ -1154,6 +1205,10 @@ async function fetchUiConfig() {
 
     byId('uiShopBanner2ImageInput').value = banner2.image || '';
     byId('uiShopBanner2TargetInput').value = banner2.targetPage || '';
+    byId('uiShopBanner2TitleInput').value = banner2.title || '';
+    byId('uiShopBanner2SubtitleInput').value = banner2.subtitle || '';
+    byId('uiShopBanner2BtnTextInput').value = banner2.btnText || '立即抢购';
+    byId('uiShopBanner2BtnColorInput').value = banner2.btnColor || '#ffc107';
     if (banner2.image) {
       byId('uiShopBanner2Preview').src = banner2.image;
       byId('uiShopBanner2Preview').style.display = 'block';
@@ -1185,8 +1240,18 @@ async function fetchUiConfig() {
 async function saveUiConfig() {
   const shopBanner1Image = byId('uiShopBanner1ImageInput').value.trim();
   const shopBanner1TargetPage = byId('uiShopBanner1TargetInput').value.trim();
+  const shopBanner1Title = byId('uiShopBanner1TitleInput').value.trim();
+  const shopBanner1Subtitle = byId('uiShopBanner1SubtitleInput').value.trim();
+  const shopBanner1BtnText = byId('uiShopBanner1BtnTextInput').value.trim() || '立即抢购';
+  const shopBanner1BtnColor = byId('uiShopBanner1BtnColorInput').value || '#ffc107';
+  
   const shopBanner2Image = byId('uiShopBanner2ImageInput').value.trim();
   const shopBanner2TargetPage = byId('uiShopBanner2TargetInput').value.trim();
+  const shopBanner2Title = byId('uiShopBanner2TitleInput').value.trim();
+  const shopBanner2Subtitle = byId('uiShopBanner2SubtitleInput').value.trim();
+  const shopBanner2BtnText = byId('uiShopBanner2BtnTextInput').value.trim() || '立即抢购';
+  const shopBanner2BtnColor = byId('uiShopBanner2BtnColorInput').value || '#ffc107';
+  
   const defaultAvatar = byId('uiAvatarInput').value.trim();
   const publisherAvatar = byId('uiPublisherAvatarInput').value.trim();
   const themeColor = byId('uiThemeColorInput').value;
@@ -1208,8 +1273,24 @@ async function saveUiConfig() {
 
   const payload = {
     shopBanners: [
-      { id: 1, image: shopBanner1Image, targetPage: shopBanner1TargetPage },
-      { id: 2, image: shopBanner2Image, targetPage: shopBanner2TargetPage }
+      { 
+        id: 1, 
+        image: shopBanner1Image, 
+        targetPage: shopBanner1TargetPage,
+        title: shopBanner1Title,
+        subtitle: shopBanner1Subtitle,
+        btnText: shopBanner1BtnText,
+        btnColor: shopBanner1BtnColor
+      },
+      { 
+        id: 2, 
+        image: shopBanner2Image, 
+        targetPage: shopBanner2TargetPage,
+        title: shopBanner2Title,
+        subtitle: shopBanner2Subtitle,
+        btnText: shopBanner2BtnText,
+        btnColor: shopBanner2BtnColor
+      }
     ],
     defaultAvatar,
     publisherAvatar,
@@ -1919,7 +2000,8 @@ async function init() {
   bindEvents();
   switchModule('videos');
   try {
-    await refreshAll();
+    await ensureModuleData('videos');
+    await ensureModuleData('comments');
   } catch (error) {
     alert(error.message || '初始化失败');
   }

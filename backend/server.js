@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -99,6 +99,7 @@ const OFFICIAL_PUBLISHER = {
   name: '琯溪义门陈',
   avatar: ''
 };
+const FALLBACK_PUBLISHER_AVATAR = 'https://picsum.photos/seed/yimen-publisher/200/200';
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -191,6 +192,28 @@ ensureDir(ADMIN_DIR);
 const LEGACY_DB_FILE = path.join(LEGACY_DATA_DIR, 'db.json');
 if (!fs.existsSync(DB_FILE) && fs.existsSync(LEGACY_DB_FILE)) {
   fs.copyFileSync(LEGACY_DB_FILE, DB_FILE);
+}
+if (fs.existsSync(DB_FILE) && fs.existsSync(LEGACY_DB_FILE)) {
+  try {
+    const currentDb = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    const legacyDb = JSON.parse(fs.readFileSync(LEGACY_DB_FILE, 'utf-8'));
+    const currentPublisherAvatar = String(currentDb.uiConfig?.publisherAvatar || '').trim();
+    const legacyPublisherAvatar = String(legacyDb.uiConfig?.publisherAvatar || '').trim();
+    if (!currentPublisherAvatar && legacyPublisherAvatar) {
+      const currentUiConfig = currentDb.uiConfig || {};
+      const legacyUiConfig = legacyDb.uiConfig || {};
+      currentDb.uiConfig = {
+        ...currentUiConfig,
+        publisherAvatar: legacyPublisherAvatar
+      };
+      if (!currentUiConfig.defaultAvatar && legacyUiConfig.defaultAvatar) {
+        currentDb.uiConfig.defaultAvatar = legacyUiConfig.defaultAvatar;
+      }
+      fs.writeFileSync(DB_FILE, JSON.stringify(currentDb, null, 2), 'utf-8');
+    }
+  } catch (error) {
+    logger.warn('Failed to merge legacy ui config', { error: error.message });
+  }
 }
 
 function createId(prefix) {
@@ -439,6 +462,39 @@ function readDb() {
     return JSON.parse(raw);
   } catch (error) {
     logger.error('Failed to read database file', { error: error.message });
+    const backupDir = path.join(DATA_DIR, 'backups');
+    if (fs.existsSync(backupDir)) {
+      try {
+        const backupFiles = fs.readdirSync(backupDir)
+          .filter(file => file.startsWith('db_backup_') && file.endsWith('.json'))
+          .sort((a, b) => fs.statSync(path.join(backupDir, b)).mtimeMs - fs.statSync(path.join(backupDir, a)).mtimeMs);
+        for (const file of backupFiles) {
+          const backupPath = path.join(backupDir, file);
+          try {
+            const backupRaw = fs.readFileSync(backupPath, 'utf-8');
+            const backupData = JSON.parse(backupRaw);
+            fs.writeFileSync(DB_FILE, JSON.stringify(backupData, null, 2), 'utf-8');
+            logger.warn('Database recovered from backup', { backup: file });
+            return backupData;
+          } catch (parseError) {
+            continue;
+          }
+        }
+      } catch (backupError) {
+        logger.warn('Failed to recover from backup', { error: backupError.message });
+      }
+    }
+    if (fs.existsSync(LEGACY_DB_FILE)) {
+      try {
+        const legacyRaw = fs.readFileSync(LEGACY_DB_FILE, 'utf-8');
+        const legacyData = JSON.parse(legacyRaw);
+        fs.writeFileSync(DB_FILE, JSON.stringify(legacyData, null, 2), 'utf-8');
+        logger.warn('Database recovered from legacy file', {});
+        return legacyData;
+      } catch (legacyError) {
+        logger.warn('Failed to recover from legacy file', { error: legacyError.message });
+      }
+    }
     const initData = createInitialDb();
     fs.writeFileSync(DB_FILE, JSON.stringify(initData, null, 2), 'utf-8');
     return initData;
@@ -579,6 +635,19 @@ function normalizeAsset(assetPath) {
   if (assetPath.startsWith('http://') || assetPath.startsWith('https://')) return assetPath;
   if (assetPath.startsWith('/uploads/')) return assetPath;
   return `/uploads/${assetPath.replace(/^\/+/, '')}`;
+}
+
+function resolveValidAvatar(avatarPath, fallback = '') {
+  const normalized = normalizeAsset(avatarPath);
+  if (!normalized) return fallback;
+  if (normalized.startsWith('/uploads/')) {
+    const relativePath = normalized.slice('/uploads/'.length);
+    const uploadPath = path.join(UPLOAD_DIR, relativePath);
+    if (!fs.existsSync(uploadPath)) {
+      return fallback;
+    }
+  }
+  return normalized;
 }
 
 function buildCommentTree(db, videoId) {
@@ -1347,7 +1416,8 @@ app.get('/api/videos', (req, res) => {
     items = items.filter((item) => item.title.toLowerCase().includes(kw) || item.author.toLowerCase().includes(kw));
   }
   
-  const publisherAvatar = db.uiConfig?.publisherAvatar || '';
+  const defaultAvatar = resolveValidAvatar(db.uiConfig?.defaultAvatar, FALLBACK_PUBLISHER_AVATAR);
+  const publisherAvatar = resolveValidAvatar(db.uiConfig?.publisherAvatar, defaultAvatar);
   
   // 重新计算每个视频的真实评论数量，并使用配置的发布者头像
   const itemsWithRealCommentCount = items.map(video => {
@@ -1355,7 +1425,7 @@ app.get('/api/videos', (req, res) => {
     return {
       ...video,
       comments: realCommentCount,
-      avatar: video.avatar || publisherAvatar
+      avatar: resolveValidAvatar(video.avatar, publisherAvatar)
     };
   });
   
@@ -1371,14 +1441,15 @@ app.get('/api/videos/:id', (req, res) => {
     return;
   }
   
-  const publisherAvatar = db.uiConfig?.publisherAvatar || '';
+  const defaultAvatar = resolveValidAvatar(db.uiConfig?.defaultAvatar, FALLBACK_PUBLISHER_AVATAR);
+  const publisherAvatar = resolveValidAvatar(db.uiConfig?.publisherAvatar, defaultAvatar);
   
   // 重新计算真实评论数量，并使用配置的发布者头像
   const realCommentCount = db.comments.filter(c => c.videoId === video._id && !c.parentId).length;
   const videoWithRealCommentCount = {
     ...video,
     comments: realCommentCount,
-    avatar: video.avatar || publisherAvatar
+    avatar: resolveValidAvatar(video.avatar, publisherAvatar)
   };
   
   res.json({ success: true, video: videoWithRealCommentCount });
