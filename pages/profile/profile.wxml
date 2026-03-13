@@ -1,0 +1,74 @@
+<view class="container">
+  <view class="header">
+    <view class="back-btn" bindtap="goBack">
+      <text class="back-icon">‹</text>
+    </view>
+    <text class="title">个人信息</text>
+    <view class="placeholder"></view>
+  </view>
+
+  <view class="content">
+    <view class="profile-card">
+      <view class="avatar-section">
+        <image class="avatar" src="{{profile.avatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'}}" mode="aspectFill"></image>
+        <view class="change-avatar" bindtap="chooseAvatar">
+          <text class="camera-icon">📷</text>
+        </view>
+      </view>
+      <text class="avatar-tip">点击相机图标更换头像</text>
+    </view>
+
+    <view class="form-section">
+      <view class="form-item">
+        <view class="field-head">
+          <text class="label">用户编号</text>
+          <text class="readonly-tip">不可修改</text>
+        </view>
+        <input class="input readonly" value="{{profile.userNumber}}" disabled placeholder="暂无" />
+      </view>
+
+      <view class="form-item">
+        <view class="field-head">
+          <text class="label">唯一识别码</text>
+          <text class="readonly-tip">不可修改</text>
+        </view>
+        <input class="input readonly" value="{{profile.uniqueId}}" disabled placeholder="暂无" />
+      </view>
+
+      <view class="form-item">
+        <view class="field-head">
+          <text class="label">昵称</text>
+        </view>
+        <input class="input" value="{{profile.nickname}}" bindinput="onNicknameInput" placeholder="请输入昵称" maxlength="20" />
+      </view>
+
+      <view class="form-item">
+        <view class="field-head">
+          <text class="label">性别</text>
+        </view>
+        <view class="gender-select">
+          <view class="gender-option {{profile.gender === 'male' ? 'active' : ''}}" bindtap="selectGender" data-gender="male">
+            <text>男</text>
+          </view>
+          <view class="gender-option {{profile.gender === 'female' ? 'active' : ''}}" bindtap="selectGender" data-gender="female">
+            <text>女</text>
+          </view>
+          <view class="gender-option {{profile.gender === '' || !profile.gender ? 'active' : ''}}" bindtap="selectGender" data-gender="">
+            <text>保密</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="field-head">
+          <text class="label">手机号</text>
+        </view>
+        <input class="input" type="number" value="{{profile.phone}}" bindinput="onPhoneInput" placeholder="请输入手机号" maxlength="11" />
+      </view>
+    </view>
+
+    <button class="save-btn" bindtap="saveProfile" disabled="{{saving}}">
+      {{saving ? '保存中...' : '保存修改'}}
+    </button>
+  </view>
+</view>

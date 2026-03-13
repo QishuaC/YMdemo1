@@ -1,0 +1,62 @@
+<view class="container">
+  <view class="search-bar">
+    <view class="search-input" bindtap="onSearchTap">
+      <text class="search-icon">🔍</text>
+      <input class="input" placeholder="搜索义门好物..." value="{{searchKeyword}}" bindinput="onSearchInput" bindconfirm="onSearchConfirm"></input>
+    </view>
+    <view class="cart-icon" bindtap="goToCart">
+      <text>🛒</text>
+      <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount}}</view>
+    </view>
+  </view>
+
+  <view class="category-tabs">
+    <view class="tab-item {{currentCategory === index ? 'active' : ''}}" 
+          wx:for="{{categories}}" wx:key="index" 
+          bindtap="switchCategory" data-index="{{index}}">
+      {{item}}
+    </view>
+  </view>
+
+  <swiper class="banner-swiper" indicator-dots="true" autoplay="true" interval="4000" circular="true">
+    <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerClick" data-id="{{item.id}}">
+      <view class="banner-item" style="background-color: {{item.bgColor}}">
+        <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
+        <view class="banner-content">
+          <view class="banner-title">{{item.title}}</view>
+          <view class="banner-subtitle">{{item.subtitle}}</view>
+          <view class="banner-btn">立即抢购</view>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <view class="product-grid">
+    <view class="product-item" wx:for="{{products}}" wx:key="id" bindtap="viewProduct" data-id="{{item.id}}">
+      <view class="product-image-wrapper">
+        <image class="product-cover" src="{{item.cover}}" mode="aspectFill"></image>
+        <view class="product-tags" wx:if="{{item.promoTags && item.promoTags.length > 0}}">
+          <text class="tag promo-tag" wx:for="{{item.promoTags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+        </view>
+      </view>
+      <view class="product-info">
+        <text class="product-name">{{item.name}}</text>
+        <view class="product-meta">
+          <text class="product-category" wx:if="{{item.category}}">{{item.category}}</text>
+        </view>
+        <view class="service-tags" wx:if="{{item.serviceTags && item.serviceTags.length > 0}}">
+          <text class="service-tag" wx:for="{{item.serviceTags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+        </view>
+        <view class="product-bottom">
+          <view class="price-wrapper">
+            <text class="price">¥{{item.price}}</text>
+            <text class="original-price" wx:if="{{item.originalPrice}}">¥{{item.originalPrice}}</text>
+          </view>
+          <view class="product-right">
+            <text class="product-sales">已售{{item.sales}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,139 @@
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 120rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 100rpx;
+}
+
+.avatar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 32rpx;
+}
+
+.avatar-btn::after {
+  border: none;
+}
+
+.logo {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  border: 6rpx solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.2);
+}
+
+.avatar-tip {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 12rpx;
+}
+
+.app-name {
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 16rpx;
+}
+
+.app-slogan {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-content {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 60rpx 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+}
+
+.nickname-section {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32rpx;
+  padding: 24rpx;
+  background: #f5f5f5;
+  border-radius: 16rpx;
+}
+
+.nickname-label {
+  font-size: 30rpx;
+  color: #333;
+  width: 100rpx;
+}
+
+.nickname-input {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+}
+
+.login-tips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 48rpx;
+}
+
+.tips-icon {
+  font-size: 32rpx;
+  margin-right: 12rpx;
+}
+
+.tips-text {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.login-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+  color: #fff;
+  border-radius: 50rpx;
+  padding: 32rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  box-shadow: 0 6rpx 16rpx rgba(7, 193, 96, 0.3);
+  border: none;
+}
+
+.login-btn.disabled {
+  opacity: 0.7;
+}
+
+.btn-icon {
+  font-size: 40rpx;
+  margin-right: 16rpx;
+}
+
+.agreement {
+  margin-top: 40rpx;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.agreement-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.agreement-link {
+  font-size: 24rpx;
+  color: #667eea;
+}

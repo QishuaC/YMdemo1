@@ -1,0 +1,60 @@
+<view class="container">
+  <view class="address-list">
+    <view class="address-card" wx:for="{{addressList}}" wx:key="id">
+      <view class="address-header">
+        <text class="contact-name">{{item.name}}</text>
+        <text class="contact-phone">{{item.phone}}</text>
+        <view class="default-tag" wx:if="{{item.isDefault}}">默认</view>
+      </view>
+      <view class="address-detail">{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</view>
+      <view class="address-actions">
+        <button class="action-btn" bindtap="setDefault" data-id="{{item.id}}" wx:if="{{!item.isDefault}}">设为默认</button>
+        <button class="action-btn" bindtap="editAddress" data-id="{{item.id}}">编辑</button>
+        <button class="action-btn delete" bindtap="deleteAddress" data-id="{{item.id}}">删除</button>
+      </view>
+    </view>
+    
+    <view class="empty-state" wx:if="{{addressList.length === 0}}">
+      <text class="empty-icon">📍</text>
+      <text class="empty-text">暂无收货地址</text>
+    </view>
+  </view>
+  
+  <view class="add-btn-wrapper">
+    <button class="add-btn" bindtap="addAddress">添加收货地址</button>
+  </view>
+</view>
+
+<view class="dialog-mask" wx:if="{{showEditDialog}}" bindtap="closeDialog"></view>
+<view class="dialog" wx:if="{{showEditDialog}}">
+  <view class="dialog-header">
+    <text>{{isEditing ? '编辑地址' : '添加地址'}}</text>
+    <text class="close-btn" bindtap="closeDialog">✕</text>
+  </view>
+  <view class="dialog-body">
+    <view class="form-item">
+      <text class="label">收货人</text>
+      <input class="input" placeholder="请输入收货人姓名" value="{{editAddress.name}}" data-field="name" bindinput="onInputChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">手机号</text>
+      <input class="input" type="number" placeholder="请输入手机号" value="{{editAddress.phone}}" data-field="phone" bindinput="onInputChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">省/市/区</text>
+      <input class="input" placeholder="请输入省市区" value="{{editAddress.province}}" data-field="province" bindinput="onInputChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">详细地址</text>
+      <input class="input" placeholder="请输入详细地址" value="{{editAddress.detail}}" data-field="detail" bindinput="onInputChange" />
+    </view>
+    <view class="form-item">
+      <text class="label">设为默认</text>
+      <switch checked="{{editAddress.isDefault}}" bindchange="onDefaultToggle" color="#07c160" />
+    </view>
+  </view>
+  <view class="dialog-footer">
+    <button class="btn-cancel" bindtap="closeDialog">取消</button>
+    <button class="btn-confirm" bindtap="saveAddress">保存</button>
+  </view>
+</view>

@@ -1,0 +1,46 @@
+<view class="container">
+  <view class="product-gallery">
+    <swiper class="gallery-swiper" indicator-dots="true" autoplay="true" interval="3000">
+      <swiper-item wx:for="{{images}}" wx:key="*this">
+        <image class="gallery-image" src="{{item}}" mode="aspectFill"></image>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <view class="product-info card">
+    <view class="price-row">
+      <text class="price">¥{{product.price}}</text>
+      <text class="original-price">¥{{product.originalPrice}}</text>
+      <text class="sales">已售{{product.sales}}</text>
+    </view>
+    <view class="product-name">{{product.name}}</view>
+    <view class="product-tags" wx:if="{{product.serviceTags && product.serviceTags.length > 0}}">
+      <text class="tag" wx:for="{{product.serviceTags}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="product-detail card">
+    <view class="detail-title">商品详情</view>
+    <view class="detail-content">
+      <image class="detail-image" wx:for="{{detailImages}}" wx:key="*this" src="{{item}}" mode="widthFix"></image>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <view class="bar-left">
+      <view class="bar-item" bindtap="goToHome">
+        <text class="bar-icon">🏠</text>
+        <text class="bar-text">义闻</text>
+      </view>
+      <view class="bar-item" bindtap="goToCart">
+        <text class="bar-icon">🛒</text>
+        <text class="bar-text">购物车</text>
+        <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount}}</view>
+      </view>
+    </view>
+    <view class="bar-right">
+      <button class="btn-cart" bindtap="addToCart">加入购物车</button>
+      <button class="btn-buy" bindtap="buyNow">立即购买</button>
+    </view>
+  </view>
+</view>

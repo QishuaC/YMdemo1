@@ -1,0 +1,84 @@
+<view class="comment-popup" wx:if="{{showCommentPopup}}">
+  <view class="popup-mask" catchtap="closeCommentPopup"></view>
+  <view class="popup-content {{withTabBar ? 'with-tabbar' : ''}}">
+    <view class="popup-header">
+      <text class="comment-count">{{comments.length}} 条评论</text>
+      <text class="close-btn" catchtap="closeCommentPopup">✕</text>
+    </view>
+    
+    <scroll-view 
+      class="comment-list" 
+      scroll-y 
+      bindscrolltolower="loadMoreComments"
+      lower-threshold="100"
+    >
+      <view class="comment-item" wx:for="{{comments}}" wx:key="_id">
+        <image class="comment-avatar" src="{{item.userId.avatar}}"></image>
+        <view class="comment-main">
+          <view class="comment-user">{{item.userId.nickname}}</view>
+          <view class="comment-text">{{item.content}}</view>
+          <view class="comment-footer">
+            <text class="comment-time">{{item.formattedTime}}</text>
+            <view class="comment-actions">
+              <view class="action-item" catchtap="likeComment" data-comment-id="{{item._id}}" data-index="{{index}}">
+                <text class="action-icon {{item.liked ? 'liked' : ''}}">{{item.liked ? '❤️' : '🤍'}}</text>
+                <text class="action-count">{{item.likes}}</text>
+              </view>
+              <view class="action-item" catchtap="replyComment" data-comment-id="{{item._id}}" data-user-name="{{item.userId.nickname}}">
+                <text class="action-text">回复</text>
+              </view>
+            </view>
+          </view>
+          
+          <view class="replies" wx:if="{{item.replies && item.replies.length > 0}}">
+            <view class="reply-item" wx:for="{{item.replies}}" wx:for-item="reply" wx:for-index="replyIndex" wx:key="_id">
+              <image class="reply-avatar" src="{{reply.userId.avatar}}"></image>
+              <view class="reply-main">
+                <view class="reply-user">{{reply.userId.nickname}}</view>
+                <view class="reply-text">{{reply.content}}</view>
+                <view class="reply-footer">
+                  <text class="reply-time">{{reply.formattedTime}}</text>
+                  <view class="reply-actions">
+                    <view class="action-item" catchtap="likeComment" data-comment-id="{{reply._id}}" data-index="{{index}}" data-reply-index="{{replyIndex}}">
+                      <text class="action-icon {{reply.liked ? 'liked' : ''}}">{{reply.liked ? '❤️' : '🤍'}}</text>
+                      <text class="action-count">{{reply.likes}}</text>
+                    </view>
+                  </view>
+                </view>
+              </view>
+            </view>
+            
+            <view class="load-more-replies" wx:if="{{item.replyCount > item.replies.length}}" catchtap="loadMoreReplies" data-comment-id="{{item._id}}" data-index="{{index}}">
+              <text>展开 {{item.replyCount - item.replies.length}} 条回复</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <view class="loading-more" wx:if="{{loadingMore}}">
+        <text>加载中...</text>
+      </view>
+      
+      <view class="no-more" wx:if="{{noMore && comments.length > 0}}">
+        <text>没有更多评论了</text>
+      </view>
+      
+      <view class="empty-comments" wx:if="{{comments.length === 0 && !loading}}">
+        <text>还没有评论，快来抢沙发吧~</text>
+      </view>
+    </scroll-view>
+    
+    <view class="comment-input-area">
+      <input 
+        class="comment-input" 
+        placeholder="{{replyTo ? '回复 ' + replyTo : '留下你的精彩评论...'}}" 
+        value="{{commentText}}"
+        bindinput="onCommentInput"
+        focus="{{inputFocus}}"
+        confirm-type="send"
+        bindconfirm="submitComment"
+      />
+      <view class="send-btn {{!canSubmit ? 'disabled' : ''}}" catchtap="submitComment">发送</view>
+    </view>
+  </view>
+</view>

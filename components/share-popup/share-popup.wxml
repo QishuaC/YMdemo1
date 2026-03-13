@@ -1,0 +1,25 @@
+<view wx:if="{{show}}" class="share-popup-container" catchtap="onClose">
+  <view class="share-popup-content" catchtap="stopPropagation">
+    <view class="share-header">
+      <text class="share-title">分享到</text>
+      <text class="close-btn" bindtap="onClose">✕</text>
+    </view>
+    
+    <view class="share-options">
+      <view 
+        wx:for="{{shareOptions}}" 
+        wx:key="id"
+        class="share-option"
+        bindtap="onShareOptionTap"
+        data-type="{{item.type}}"
+      >
+        <text class="share-icon">{{item.icon}}</text>
+        <text class="share-name">{{item.name}}</text>
+      </view>
+    </view>
+    
+    <view class="cancel-btn" bindtap="onClose">
+      取消
+    </view>
+  </view>
+</view>

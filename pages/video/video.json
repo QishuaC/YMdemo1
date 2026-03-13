@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "视频",
+  "usingComponents": {
+    "comment-popup": "/components/comment-popup/comment-popup"
+  }
+}

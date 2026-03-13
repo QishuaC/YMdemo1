@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/video/video",
+    "pages/article/article",
+    "pages/article/detail",
+    "pages/shop/shop",
+    "pages/member/member",
+    "pages/profile/profile",
+    "pages/login/login",
+    "pages/cart/cart",
+    "pages/product/product",
+    "pages/order/order",
+    "pages/payment/payment",
+    "pages/lucky-draw/lucky-draw",
+    "pages/address/address",
+    "pages/points-exchange/points-exchange",
+    "pages/points-history/points-history",
+    "pages/yixun/yixun"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "精彩生活",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#8a8a8a",
+    "selectedColor": "#07c160",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "义闻"
+      },
+      {
+        "pagePath": "pages/yixun/yixun",
+        "text": "义讯"
+      },
+      {
+        "pagePath": "pages/shop/shop",
+        "text": "义商"
+      },
+      {
+        "pagePath": "pages/member/member",
+        "text": "我的"
+      }
+    ]
+  },
+  "usingComponents": {},
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

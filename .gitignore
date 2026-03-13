@@ -1,0 +1,22 @@
+# 运行时数据
+.runtime-data/
+backend/data/
+backend/uploads/
+
+# Node模块
+node_modules/
+
+# IDE配置
+.vscode/
+.idea/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件
+*.bak
+*.tmp
+
+# 微信小程序编译输出
+miniprogram_npm/

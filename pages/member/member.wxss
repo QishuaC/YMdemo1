@@ -1,0 +1,376 @@
+
+
+.container {
+  padding-bottom: 120rpx;
+}
+
+.member-header {
+  padding: 40rpx 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30rpx;
+}
+
+.user-avatar {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  border: 4rpx solid #fff;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.user-detail {
+  flex: 1;
+}
+
+.user-name-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-right: 12rpx;
+}
+
+.gender-badge {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.gender-badge[data-gender="1"],
+.gender-badge[data-gender="male"] {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+}
+
+.gender-badge[data-gender="2"],
+.gender-badge[data-gender="female"] {
+  background: linear-gradient(135deg, #ff4d6d 0%, #c9184a 100%);
+}
+
+.gender-icon {
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: bold;
+}
+
+.member-level {
+  display: flex;
+  align-items: center;
+}
+
+.level-icon {
+  font-size: 32rpx;
+  margin-right: 8rpx;
+}
+
+.level-name {
+  font-size: 26rpx;
+  color: #ff9600;
+}
+
+.member-stats {
+  display: flex;
+  justify-content: space-around;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.stat-item.checkin-item {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.stat-item.checkin-item:active {
+  transform: scale(0.95);
+}
+
+.stat-item.checkin-item.checked {
+  opacity: 0.8;
+}
+
+.checkin-value-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.checkin-unit {
+  font-size: 24rpx;
+  color: #666;
+  margin-left: 4rpx;
+  font-weight: normal;
+}
+
+.checkin-month {
+  font-size: 20rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.checkin-status {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 32rpx;
+  height: 32rpx;
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 8rpx rgba(82, 196, 26, 0.4);
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.stat-arrow {
+  font-size: 20rpx;
+  color: #ccc;
+  margin-top: 4rpx;
+}
+
+.member-benefits {
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.benefits-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-bottom: 24rpx;
+}
+
+.benefits-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: relative;
+}
+
+.benefit-item:last-child {
+  border-bottom: none;
+}
+
+.benefit-icon {
+  font-size: 48rpx;
+  margin-right: 20rpx;
+}
+
+.benefit-text {
+  font-size: 30rpx;
+  color: #333;
+  flex: 1;
+}
+
+.benefit-status {
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 30rpx;
+}
+
+.benefit-status.claimable {
+  background: linear-gradient(135deg, #ff9600 0%, #ff7a00 100%);
+  color: #fff;
+}
+
+.benefit-status.claimed {
+  background: #f0f0f0;
+  color: #999;
+}
+
+.benefit-chances {
+  font-size: 24rpx;
+  color: #ff9600;
+  background: #fff5e6;
+  padding: 8rpx 20rpx;
+  border-radius: 30rpx;
+}
+
+.expiry-info {
+  margin-top: 30rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+  text-align: center;
+}
+
+.expiry-label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.expiry-date {
+  font-size: 28rpx;
+  color: #ff9600;
+  font-weight: 600;
+}
+
+.menu-list {
+  margin-bottom: 20rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 30rpx;
+  border-bottom: 1rpx solid #f5f7fa;
+  transition: background 0.2s ease;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  font-size: 40rpx;
+  margin-right: 20rpx;
+}
+
+.menu-title {
+  flex: 1;
+  font-size: 30rpx;
+}
+
+.menu-arrow {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.level-section {
+  padding: 30rpx;
+}
+
+.level-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-bottom: 30rpx;
+  text-align: center;
+}
+
+.vip-card {
+  background: linear-gradient(135deg, #ff9600 0%, #ff7a00 100%);
+  border-radius: 24rpx;
+  padding: 40rpx 30rpx;
+  margin-bottom: 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(255, 150, 0, 0.3);
+}
+
+.vip-icon {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+}
+
+.vip-name {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-bottom: 16rpx;
+}
+
+.vip-price {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 24rpx;
+}
+
+.price-symbol {
+  font-size: 28rpx;
+  margin-right: 4rpx;
+}
+
+.price-value {
+  font-size: 56rpx;
+  font-weight: bold;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  margin-left: 4rpx;
+  opacity: 0.9;
+}
+
+.vip-benefits-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 26rpx;
+  opacity: 0.95;
+}
+
+.join-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #ff9600 0%, #ff7a00 100%);
+  color: #fff;
+  border-radius: 50rpx;
+  font-size: 32rpx;
+  padding: 26rpx;
+  font-weight: 600;
+  box-shadow: 0 6rpx 16rpx rgba(255, 150, 0, 0.3);
+}
+
+.login-tip {
+  margin-top: 8rpx;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.logout-section {
+  padding: 30rpx;
+  margin-top: 20rpx;
+}
+
+.logout-btn {
+  width: 100%;
+  background: #fff;
+  color: #ff4d4f;
+  border-radius: 50rpx;
+  font-size: 30rpx;
+  padding: 24rpx;
+  font-weight: 500;
+  border: 2rpx solid #ff4d4f;
+}
+
+.logout-btn:active {
+  background: #fff5f5;
+}

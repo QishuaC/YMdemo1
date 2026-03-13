@@ -1,0 +1,95 @@
+{
+  "timestamp": "2026-03-13T03:51:23.722Z",
+  "summary": {
+    "filesScanned": 19,
+    "issuesFound": 11,
+    "criticalIssues": 0,
+    "warnings": 11,
+    "infoCount": 3,
+    "checkPassed": 7
+  },
+  "issues": [
+    {
+      "timestamp": "2026-03-13T03:51:23.717Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "article.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.717Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "cart.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.718Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "member.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.718Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "order.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.718Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "payment.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.719Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "points-exchange.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.719Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "points-history.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.719Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "product.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.720Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "profile.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.720Z",
+      "level": "WARN",
+      "message": "请求未使用try-catch包裹",
+      "file": "shop.js"
+    },
+    {
+      "timestamp": "2026-03-13T03:51:23.722Z",
+      "level": "WARN",
+      "message": "发现硬编码密码，建议使用环境变量",
+      "file": "server.js"
+    }
+  ],
+  "improvements": [
+    {
+      "title": "添加单元测试",
+      "description": "为关键API添加单元测试覆盖",
+      "priority": "high",
+      "timestamp": "2026-03-13T03:51:23.716Z"
+    }
+  ],
+  "recommendations": [
+    "定期检查错误日志",
+    "监控API响应时间",
+    "定期备份数据库",
+    "更新依赖包版本",
+    "执行安全审计"
+  ],
+  "score": 67
+}

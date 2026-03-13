@@ -1,0 +1,101 @@
+<view class="container">
+  <!-- Top Tabs -->
+  <view class="top-tabs" style="padding-top: {{statusBarHeight}}px">
+    <view class="tab {{currentTab === 'recommend' ? 'active' : ''}}" bindtap="switchTab" data-tab="recommend">推荐</view>
+    <view class="tab {{currentTab === 'hot' ? 'active' : ''}}" bindtap="switchTab" data-tab="hot">最热</view>
+    <view class="tab {{currentTab === 'new' ? 'active' : ''}}" bindtap="switchTab" data-tab="new">最新</view>
+    <view class="tab {{currentTab === 'liked' ? 'active' : ''}}" bindtap="switchTab" data-tab="liked">喜欢</view>
+  </view>
+
+  <!-- Video Swiper -->
+  <swiper 
+    class="video-swiper" 
+    vertical="{{true}}" 
+    current="{{currentVideoIndex}}" 
+    bindchange="onSwiperChange"
+    duration="300"
+  >
+    <block wx:for="{{videoList}}" wx:key="_id">
+      <swiper-item class="video-swiper-item">
+        <view class="video-wrapper">
+          <video 
+            id="video-{{index}}"
+            class="video-player"
+            src="{{item.videoUrl}}" 
+            loop="{{true}}" 
+            autoplay="{{index === currentVideoIndex}}" 
+            controls="{{false}}"
+            show-fullscreen-btn="{{false}}"
+            show-play-btn="{{false}}"
+            show-center-play-btn="{{false}}"
+            enable-progress-gesture="{{false}}"
+            object-fit="{{item.videoFit || 'cover'}}"
+            show-screen-lock-button="{{false}}"
+            show-bottom-progress="{{false}}"
+            enable-danmu="{{false}}"
+            muted="{{false}}"
+            initial-time="0"
+            direction="{{0}}"
+            bindtap="togglePlay"
+            binderror="onVideoError"
+            bindwaiting="onVideoWaiting"
+            bindplay="onVideoPlay"
+            bindpause="onVideoPause"
+            bindloadedmetadata="onVideoMetadataLoaded"
+            data-index="{{index}}"
+          ></video>
+          
+          <!-- Play Icon Overlay -->
+          <view class="play-icon" wx:if="{{!isPlaying}}" bindtap="togglePlay">
+            <text>▶</text>
+          </view>
+
+          <!-- Right Action Bar -->
+          <view class="right-bar">
+            <view class="action-item" catchtap="toggleLike" data-index="{{index}}">
+              <text class="icon" style="color: {{item.isLiked ? '#ff2442' : 'white'}}">{{item.isLiked ? '♥' : '♡'}}</text>
+              <text class="count">{{item.likes}}</text>
+            </view>
+
+            <view class="action-item" catchtap="showComments" data-index="{{index}}">
+              <text class="icon">💬</text>
+              <text class="count">{{item.comments}}</text>
+            </view>
+
+            <button class="action-item share-btn" open-type="share" data-index="{{index}}">
+              <text class="icon">🔗</text>
+              <text class="count">分享</text>
+            </button>
+          </view>
+
+          <!-- Bottom Info -->
+          <view class="bottom-info">
+            <view class="author-row">
+              <image class="bottom-avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+              <view class="author-details">
+                <text class="bottom-author-name">{{item.author}}</text>
+                <view class="official-badge">
+                  <text class="official-dot"></text>
+                  <text class="official-text">官方发布</text>
+                </view>
+              </view>
+              <view class="follow-btn">+ 关注</view>
+            </view>
+            <view class="title">{{item.title}}</view>
+          </view>
+        </view>
+      </swiper-item>
+    </block>
+  </swiper>
+
+  <!-- Comment Popup -->
+  <comment-popup 
+    show="{{showCommentPopup}}" 
+    videoId="{{currentVideoId}}" 
+    with-tab-bar="{{true}}"
+    commentCount="{{currentVideoCommentCount}}"
+    bind:close="closeCommentPopup"
+    bind:commentadded="onCommentAdded"
+    bind:commentcountupdate="onCommentCountUpdate"
+  />
+</view>

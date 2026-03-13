@@ -1,0 +1,41 @@
+<view class="login-container">
+  <view class="login-header">
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image class="logo" src="{{avatarUrl || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'}}" mode="aspectFill"></image>
+      <text class="avatar-tip">点击选择头像</text>
+    </button>
+    <text class="app-name">精彩生活</text>
+    <text class="app-slogan">发现生活的美好</text>
+  </view>
+
+  <view class="login-content">
+    <view class="nickname-section">
+      <text class="nickname-label">昵称</text>
+      <input class="nickname-input" 
+             type="nickname" 
+             placeholder="请输入昵称" 
+             value="{{nickName}}"
+             bindinput="onNickNameInput"
+             bindblur="onNickNameBlur"/>
+    </view>
+    
+    <view class="login-tips">
+      <text class="tips-icon">🔒</text>
+      <text class="tips-text">选择头像和昵称后点击登录</text>
+    </view>
+    
+    <button class="login-btn {{isLoading ? 'disabled' : ''}}" 
+            bindtap="handleLogin"
+            disabled="{{isLoading}}">
+      <text class="btn-icon">💬</text>
+      <text class="btn-text">{{isLoading ? '登录中...' : '微信一键登录'}}</text>
+    </button>
+    
+    <view class="agreement">
+      <text class="agreement-text">登录即表示同意</text>
+      <text class="agreement-link">《用户协议》</text>
+      <text class="agreement-text">和</text>
+      <text class="agreement-link">《隐私政策》</text>
+    </view>
+  </view>
+</view>

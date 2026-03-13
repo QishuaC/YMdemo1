@@ -1,0 +1,46 @@
+<view class="container">
+  <view class="banner">
+    <image class="banner-image" src="{{banner}}" mode="aspectFill"></image>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">精选文章</text>
+      <text class="section-more" bindtap="goToArticle">查看更多 ></text>
+    </view>
+    <view class="article-list">
+      <view class="article-item card" wx:for="{{articles}}" wx:key="id" bindtap="viewArticle" data-id="{{item.id}}">
+        <image class="article-cover" src="{{item.cover}}" mode="aspectFill"></image>
+        <view class="article-info">
+          <text class="article-title">{{item.title}}</text>
+          <text class="article-summary">{{item.summary}}</text>
+          <view class="article-meta">
+            <image class="article-avatar" src="{{item.avatar}}"></image>
+            <text class="article-author">{{item.author}}</text>
+            <text class="article-time">{{item.publishTime}}</text>
+            <text class="article-views">{{item.views}}阅读</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">热门商品</text>
+      <text class="section-more" bindtap="goToShop">查看更多 ></text>
+    </view>
+    <view class="product-grid">
+      <view class="product-item card" wx:for="{{hotProducts}}" wx:key="id" bindtap="viewProduct" data-id="{{item.id}}">
+        <image class="product-cover" src="{{item.cover}}" mode="aspectFill"></image>
+        <view class="product-info">
+          <text class="product-name">{{item.name}}</text>
+          <view class="product-price-row">
+            <text class="price">¥{{item.price}}</text>
+            <text class="product-sales">已售{{item.sales}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

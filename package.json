@@ -1,0 +1,8 @@
+{
+  "name": "demo-project",
+  "version": "1.0.0",
+  "description": "项目自动Git备份",
+  "scripts": {
+    "backup": "node auto-git-backup.js"
+  }
+}

@@ -1,0 +1,17 @@
+<view class="container">
+  <view class="article-list">
+    <view class="article-item card" wx:for="{{articles}}" wx:key="id" bindtap="viewArticle" data-id="{{item.id}}">
+      <image class="article-cover" src="{{item.cover}}" mode="aspectFill"></image>
+      <view class="article-info">
+        <text class="article-title">{{item.title}}</text>
+        <text class="article-summary">{{item.summary}}</text>
+        <view class="article-meta">
+          <image class="article-avatar" src="{{item.avatar}}"></image>
+          <text class="article-author">{{item.author}}</text>
+          <text class="article-time">{{item.publishTime}}</text>
+          <text class="article-views">{{item.views}}阅读</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>后台管理</title>
+  <link rel="stylesheet" href="/backend-console.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="topbar">
+      <div class="brand">后台管理</div>
+      <div class="topbar-right">
+        <span>欢迎，自动管理员</span>
+        <button id="syncBtn" class="btn ghost">同步前端数据</button>
+        <button id="refreshBtn" class="btn ghost">刷新数据</button>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <button class="menu-item active" data-module="videos">视频管理</button>
+      <button class="menu-item" data-module="comments">评论管理</button>
+      <button class="menu-item" data-module="articles">文章管理</button>
+      <button class="menu-item" data-module="products">商品管理</button>
+      <button class="menu-item" data-module="orders">订单管理</button>
+      <button class="menu-item" data-module="users">用户管理</button>
+      <button class="menu-item" data-module="points">积分管理</button>
+      <button class="menu-item" data-module="exchange-products">积分兑换商品</button>
+      <button class="menu-item" data-module="ui-config">UI设置</button>
+    </aside>
+
+    <main class="main">
+      <section id="videosModule" class="module active">
+        <div class="module-head">
+          <h2>视频管理</h2>
+          <div class="module-actions">
+            <div style="display: flex; align-items: center; margin-right: 10px;">
+              <span style="font-size: 16px; color: #666; margin-right: 5px;">排序：</span>
+              <select id="videoSortSelect" style="padding: 8px; border: 1px solid #5e9cff; border-radius: 6px; color: #1f6fff; font-size: 16px; background: #fff; cursor: pointer; min-width: 150px;">
+                <option value="date-desc">发布日期(晚→早)</option>
+                <option value="date-asc">发布日期(早→晚)</option>
+                <option value="likes-desc">点赞(高→低)</option>
+                <option value="likes-asc">点赞(低→高)</option>
+                <option value="comments-desc">评论(高→低)</option>
+                <option value="comments-asc">评论(低→高)</option>
+              </select>
+            </div>
+            <button class="btn" id="uploadVideoByUrlBtn">URL上传</button>
+            <button class="btn primary" data-action="create" data-module="videos">上传视频</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>标题</th>
+                <th>作者</th>
+                <th>封面</th>
+                <th>视频地址</th>
+                <th>点赞</th>
+                <th>评论</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="videosTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="commentsModule" class="module">
+        <div class="module-head">
+          <h2>评论管理</h2>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="commentVideoFilter">按视频筛选：</label>
+              <select id="commentVideoFilter">
+                <option value="">全部</option>
+              </select>
+            </div>
+            <button id="deleteSelectedCommentsBtn" class="btn danger" style="display: none;">批量删除</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAllComments"></th>
+                <th>用户</th>
+                <th>视频</th>
+                <th>内容</th>
+                <th>点赞</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="commentsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="articlesModule" class="module">
+        <div class="module-head">
+          <h2>文章管理</h2>
+          <button class="btn primary" data-action="create" data-module="articles">上传文章</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>标题</th>
+                <th>作者</th>
+                <th>封面</th>
+                <th>阅读量</th>
+                <th>点赞数</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="articlesTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="productsModule" class="module">
+        <div class="module-head">
+          <h2>商品管理</h2>
+          <button class="btn primary" data-action="create" data-module="products">添加商品</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排序</th>
+                <th>商品ID</th>
+                <th>商品名称</th>
+                <th>价格</th>
+                <th>原价</th>
+                <th>库存</th>
+                <th>销量</th>
+                <th>分类</th>
+                <th>标签</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ordersModule" class="module">
+        <div class="module-head">
+          <h2>订单管理</h2>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="orderShippingStatusFilter">发货状态筛选：</label>
+              <select id="orderShippingStatusFilter">
+                <option value="">全部</option>
+                <option value="unshipped">未发货</option>
+                <option value="shipped">已发货</option>
+              </select>
+            </div>
+            <div class="filter-wrap">
+              <label for="orderStatusFilter">状态筛选：</label>
+              <select id="orderStatusFilter">
+                <option value="">全部</option>
+                <option value="pending">待支付</option>
+                <option value="paid">已支付</option>
+                <option value="shipping">配送中</option>
+                <option value="delivered">已签收</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </div>
+            <button id="exportOrdersBtn" class="btn">导出订单</button>
+            <button id="importOrdersBtn" class="btn">导入订单</button>
+            <button id="deleteSelectedOrdersBtn" class="btn danger" style="display: none;">批量删除</button>
+            <input id="ordersImportInput" type="file" accept=".xlsx,.xls,.csv,application/json" hidden>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAllOrders"></th>
+                <th>订单号</th>
+                <th>用户编号</th>
+                <th>用户名</th>
+                <th>商品名称</th>
+                <th>商品数量</th>
+                <th>总金额</th>
+                <th>收货人</th>
+                <th>收货电话</th>
+                <th>收货地址</th>
+                <th>状态</th>
+                <th>发货状态</th>
+                <th>快递单号</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="usersModule" class="module">
+        <div class="module-head">
+          <h2>用户管理</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>头像</th>
+                <th>用户名称</th>
+                <th>用户编号</th>
+                <th>用户识别码</th>
+                <th>收货人姓名</th>
+                <th>收货人手机号</th>
+                <th>性别</th>
+                <th>收货地址</th>
+                <th>累计消费金额</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="pointsModule" class="module">
+        <div class="module-head">
+          <h2>积分管理</h2>
+          <div class="module-actions">
+            <button class="btn points-tab active" data-tab="users">用户积分</button>
+            <button class="btn points-tab" data-tab="redemptions">积分兑换</button>
+          </div>
+        </div>
+        
+        <div class="points-content" id="pointsUsersContent">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>用户</th>
+                  <th>当前积分</th>
+                  <th>积分消耗</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="pointsTable"></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="points-content" id="pointsRedemptionsContent" style="display: none;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>兑换用户</th>
+                  <th>兑换物品</th>
+                  <th>消耗积分</th>
+                  <th>兑换时间</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="pointsRedemptionsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="exchange-productsModule" class="module">
+        <div class="module-head">
+          <h2>积分兑换商品</h2>
+          <button class="btn primary" data-action="create" data-module="exchange-products">添加兑换商品</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排序</th>
+                <th>商品名称</th>
+                <th>封面</th>
+                <th>所需积分</th>
+                <th>价值价格</th>
+                <th>热门兑换</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="exchangeProductsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ui-configModule" class="module">
+        <div class="module-head">
+          <h2>UI 设置</h2>
+          <button class="btn primary" id="saveUiConfigBtn">保存配置</button>
+        </div>
+        <div class="form-wrap" style="padding: 20px; max-width: 800px;">
+          <div class="form-row">
+            <label>义商 Banner 1</label>
+            <div class="file-row">
+              <input type="text" id="uiShopBanner1ImageInput" placeholder="Banner 1 图片链接">
+              <input type="file" id="uiShopBanner1File" accept="image/*">
+            </div>
+            <input type="text" id="uiShopBanner1TargetInput" placeholder="Banner 1 跳转页面，如 /pages/product/product?id=xxx" style="margin-top: 8px;">
+            <img id="uiShopBanner1Preview" class="preview-img" src="" alt="Shop Banner 1 Preview" style="max-width: 300px; margin-top: 10px; display: none;">
+          </div>
+
+          <div class="form-row">
+            <label>义商 Banner 2</label>
+            <div class="file-row">
+              <input type="text" id="uiShopBanner2ImageInput" placeholder="Banner 2 图片链接">
+              <input type="file" id="uiShopBanner2File" accept="image/*">
+            </div>
+            <input type="text" id="uiShopBanner2TargetInput" placeholder="Banner 2 跳转页面，如 /pages/shop/shop" style="margin-top: 8px;">
+            <img id="uiShopBanner2Preview" class="preview-img" src="" alt="Shop Banner 2 Preview" style="max-width: 300px; margin-top: 10px; display: none;">
+          </div>
+          
+          <div class="form-row">
+            <label>默认头像</label>
+            <div class="file-row">
+              <input type="text" id="uiAvatarInput" placeholder="图片链接">
+              <input type="file" id="uiAvatarFile" accept="image/*">
+            </div>
+            <img id="uiAvatarPreview" class="preview-img" src="" alt="Avatar Preview" style="width: 100px; height: 100px; border-radius: 50%; margin-top: 10px; display: none;">
+          </div>
+
+          <div class="form-row">
+            <label>视频发布者头像</label>
+            <div class="file-row">
+              <input type="text" id="uiPublisherAvatarInput" placeholder="图片链接">
+              <input type="file" id="uiPublisherAvatarFile" accept="image/*">
+            </div>
+            <img id="uiPublisherAvatarPreview" class="preview-img" src="" alt="Publisher Avatar Preview" style="width: 100px; height: 100px; border-radius: 50%; margin-top: 10px; display: none;">
+          </div>
+
+          <div class="form-row">
+            <label>主题颜色</label>
+            <input type="color" id="uiThemeColorInput">
+          </div>
+
+          <div class="form-row">
+            <label>底部导航栏 (JSON)</label>
+            <textarea id="uiTabBarInput" rows="10" placeholder="请输入 JSON 格式配置"></textarea>
+            <div class="hint" style="font-size: 12px; color: #666; margin-top: 5px;">
+              格式示例: [{"pagePath":"/pages/index/index","text":"义闻","icon":"🏠"}, ...]
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <span class="modal-close" id="closeEdit">&times;</span>
+      <div class="modal-title" id="modalTitle">编辑</div>
+      <form id="editForm"></form>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelEdit">取消</button>
+        <button class="btn primary" id="submitEdit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="urlUploadModal">
+    <div class="modal-content">
+      <span class="modal-close" id="closeUrlUpload">&times;</span>
+      <div class="modal-title">URL/抖音链接上传视频</div>
+      <div class="form-wrap">
+        <div class="form-row">
+          <label>视频URL或抖音分享链接</label>
+          <textarea id="videoUrlsInput" rows="6" placeholder="请粘贴抖音分享链接或视频URL，每行一个&#10;示例：4.10 06/02 e@O.XM NwF:/ 逆天！... https://v.douyin.com/..."></textarea>
+          <div class="hint" style="font-size: 12px; color: #666; margin-top: 5px;">
+            支持直接粘贴抖音分享链接，系统会自动解析URL和标题
+          </div>
+        </div>
+        <div class="form-row">
+          <label>作者</label>
+          <select id="authorSelect" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <option value="琯溪义门陈" selected>琯溪义门陈</option>
+            <option value="义门陈文化">义门陈文化</option>
+          </select>
+        </div>
+        <div class="form-row" id="urlUploadProgress" style="display: none;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="urlUploadProgressFill"></div>
+          </div>
+          <div class="progress-text" id="urlUploadProgressText">正在处理...</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelUrlUpload">取消</button>
+        <button class="btn primary" id="submitUrlUpload">开始上传</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="pointsAdjustModal">
+    <div class="modal-content">
+      <span class="modal-close" id="closePointsAdjust">&times;</span>
+      <div class="modal-title">调整用户积分</div>
+      <div class="form-wrap">
+        <div class="form-row">
+          <label>用户</label>
+          <input type="text" id="pointsAdjustUserName" readonly>
+        </div>
+        <div class="form-row">
+          <label>当前积分</label>
+          <input type="number" id="pointsAdjustCurrentPoints" readonly>
+        </div>
+        <div class="form-row">
+          <label>调整类型</label>
+          <select id="pointsAdjustType">
+            <option value="earn">增加积分</option>
+            <option value="spend">扣除积分</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>积分数量</label>
+          <input type="number" id="pointsAdjustAmount" min="1" placeholder="请输入积分数量">
+        </div>
+        <div class="form-row">
+          <label>说明</label>
+          <input type="text" id="pointsAdjustDescription" placeholder="请输入调整说明">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelPointsAdjust">取消</button>
+        <button class="btn primary" id="submitPointsAdjust">确认调整</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="pointsConsumeHistoryModal">
+    <div class="modal-content" style="max-width: 860px;">
+      <span class="modal-close" id="closePointsConsumeHistory">&times;</span>
+      <div class="modal-title">积分消费记录</div>
+      <div class="form-wrap">
+        <div style="margin-bottom: 12px; font-size: 14px; color: #666;">
+          用户：<span id="pointsConsumeHistoryUserName">-</span>
+        </div>
+        <div class="table-wrap" style="max-height: 420px; overflow: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>消费积分</th>
+                <th>说明</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody id="pointsConsumeHistoryTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelPointsConsumeHistory">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/backend-console.js"></script>
+</body>
+</html>
