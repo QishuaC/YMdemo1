@@ -103,9 +103,14 @@
 }
 
 .comment-user {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.comment-user-name {
   font-size: 28rpx;
   color: #666;
-  margin-bottom: 10rpx;
 }
 
 .comment-text {
@@ -196,9 +201,14 @@
 }
 
 .reply-user {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.reply-user-name {
   font-size: 26rpx;
   color: #666;
-  margin-bottom: 8rpx;
 }
 
 .reply-text {

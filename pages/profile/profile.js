@@ -15,6 +15,11 @@ Page({
     saving: false
   },
 
+  stripAvatarVersion(url) {
+    if (!url || typeof url !== 'string') return '';
+    return url.split('?')[0].split('#')[0];
+  },
+
   onLoad() {
     this.loadProfile();
   },
@@ -36,7 +41,7 @@ Page({
       if (res.success) {
         const profile = res.data;
         if (profile.avatar && profile.avatar.startsWith('/uploads/')) {
-          profile.avatar = app.globalData.baseUrl + profile.avatar;
+          profile.avatar = `${app.globalData.baseUrl}${profile.avatar}?v=${Date.now()}`;
         }
         this.setData({
           profile: profile,
@@ -78,7 +83,7 @@ Page({
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         wx.uploadFile({
-          url: app.globalData.baseUrl + '/api/upload',
+          url: app.globalData.baseUrl + '/api/upload/user-avatar',
           filePath: tempFilePath,
           name: 'file',
           header: {
@@ -89,7 +94,7 @@ Page({
             if (data.success) {
               let avatarUrl = data.url;
               if (avatarUrl && avatarUrl.startsWith('/uploads/')) {
-                avatarUrl = app.globalData.baseUrl + avatarUrl;
+                avatarUrl = `${app.globalData.baseUrl}${avatarUrl}?v=${Date.now()}`;
               }
               this.setData({
                 'profile.avatar': avatarUrl
@@ -134,7 +139,7 @@ Page({
       method: 'PUT',
       data: {
         nickname: profile.nickname,
-        avatar: profile.avatar,
+        avatar: this.stripAvatarVersion(profile.avatar),
         gender: profile.gender,
         phone: profile.phone
       }

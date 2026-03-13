@@ -2,7 +2,7 @@
   <view class="popup-mask" catchtap="closeCommentPopup"></view>
   <view class="popup-content {{withTabBar ? 'with-tabbar' : ''}}">
     <view class="popup-header">
-      <text class="comment-count">{{comments.length}} 条评论</text>
+      <text class="comment-count">{{commentCount}} 条评论</text>
       <text class="close-btn" catchtap="closeCommentPopup">✕</text>
     </view>
     
@@ -15,7 +15,10 @@
       <view class="comment-item" wx:for="{{comments}}" wx:key="_id">
         <image class="comment-avatar" src="{{item.userId.avatar}}"></image>
         <view class="comment-main">
-          <view class="comment-user">{{item.userId.nickname}}</view>
+          <view class="comment-user">
+            <yimen-badge compact="{{true}}" />
+            <text class="comment-user-name">{{item.userId.nickname}}</text>
+          </view>
           <view class="comment-text">{{item.content}}</view>
           <view class="comment-footer">
             <text class="comment-time">{{item.formattedTime}}</text>
@@ -34,7 +37,10 @@
             <view class="reply-item" wx:for="{{item.replies}}" wx:for-item="reply" wx:for-index="replyIndex" wx:key="_id">
               <image class="reply-avatar" src="{{reply.userId.avatar}}"></image>
               <view class="reply-main">
-                <view class="reply-user">{{reply.userId.nickname}}</view>
+                <view class="reply-user">
+                  <yimen-badge compact="{{true}}" />
+                  <text class="reply-user-name">{{reply.userId.nickname}}</text>
+                </view>
                 <view class="reply-text">{{reply.content}}</view>
                 <view class="reply-footer">
                   <text class="reply-time">{{reply.formattedTime}}</text>

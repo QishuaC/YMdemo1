@@ -22,9 +22,9 @@ Page({
     menuList: [
       { icon: '👤', title: '个人信息' },
       { icon: '📦', title: '我的订单' },
+      { icon: '📍', title: '收货地址' },
       { icon: '🎁', title: '我的优惠券' },
-      { icon: '⭐', title: '我的收藏' },
-      { icon: '📍', title: '收货地址' }
+      { icon: '⭐', title: '我的收藏' }
     ]
   },
 
@@ -41,13 +41,28 @@ Page({
     this.loadCheckInStatus();
   },
 
+  normalizeAvatarUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    if (/^https?:\/\//.test(url)) return url;
+    if (url.startsWith('/uploads/')) {
+      return `${app.globalData.baseUrl}${url}?v=${Date.now()}`;
+    }
+    return url;
+  },
+
   loadMemberInfo() {
     const isLoggedIn = auth.isLoggedIn();
     const userInfo = auth.getUserInfo();
+    const normalizedUserInfo = isLoggedIn && userInfo
+      ? {
+          ...userInfo,
+          avatarUrl: this.normalizeAvatarUrl(userInfo.avatarUrl || userInfo.avatar)
+        }
+      : null;
     
     this.setData({
       isLoggedIn,
-      userInfo: isLoggedIn ? userInfo : null,
+      userInfo: normalizedUserInfo,
       isMember: app.globalData.isMember || false,
       memberExpiry: app.globalData.memberExpiry || '',
       monthlyGiftClaimed: app.globalData.monthlyGiftClaimed || false,

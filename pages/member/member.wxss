@@ -34,6 +34,11 @@
   margin-bottom: 10rpx;
 }
 
+.user-name-wrap {
+  display: flex;
+  align-items: center;
+}
+
 .user-name {
   font-size: 36rpx;
   font-weight: bold;

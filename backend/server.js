@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -103,6 +103,8 @@ const FALLBACK_PUBLISHER_AVATAR = 'https://picsum.photos/seed/yimen-publisher/20
 const PUBLISHER_AVATAR_FOLDER = 'userID';
 const PUBLISHER_AVATAR_ALIAS = 'publisher-avatar';
 const PUBLISHER_AVATAR_ALIAS_URL = `/uploads/${PUBLISHER_AVATAR_FOLDER}/${PUBLISHER_AVATAR_ALIAS}`;
+const USER_AVATAR_FOLDER = 'UserProducts';
+const USER_AVATAR_PREFIX = 'P';
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 function ensureDir(dirPath) {
@@ -191,6 +193,7 @@ async function openFileInSystem(filePath) {
 
 ensureDir(DATA_DIR);
 ensureDir(UPLOAD_DIR);
+ensureDir(path.join(UPLOAD_DIR, USER_AVATAR_FOLDER));
 ensureDir(ADMIN_DIR);
 
 const LEGACY_DB_FILE = path.join(LEGACY_DATA_DIR, 'db.json');
@@ -723,11 +726,15 @@ function buildCommentTree(db, videoId) {
   return result;
 }
 
+function countVideoComments(db, videoId) {
+  return db.comments.filter((item) => item.videoId === videoId).length;
+}
+
 function refreshVideoCommentCount(db, videoId) {
-  const topLevelCount = db.comments.filter((item) => item.videoId === videoId && !item.parentId).length;
+  const commentCount = countVideoComments(db, videoId);
   const video = db.videos.find((item) => item._id === videoId);
   if (video) {
-    video.comments = topLevelCount;
+    video.comments = commentCount;
     video.updatedAt = new Date().toISOString();
   }
 }
@@ -1042,6 +1049,76 @@ app.post('/api/upload', uploadImage.single('file'), (req, res) => {
   });
 });
 
+app.post('/api/upload/user-avatar', uploadImage.single('file'), (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ success: false, message: '缺少上传文件' });
+    return;
+  }
+  try {
+    const db = readDbWithCache();
+    const userId = req.header('x-user-id') || 'wx_user_001';
+    let user = db.users.find((item) => item._id === userId);
+    if (!user) {
+      user = {
+        _id: userId,
+        uniqueId: generateUniqueId(),
+        userNumber: generateUserNumber(db.users),
+        nickname: '微信用户',
+        avatar: '',
+        gender: '',
+        phone: '',
+        points: 0,
+        checkIns: [],
+        pointsHistory: [],
+        addresses: [],
+        openId: 'mock_openid_the code is a mock one'
+      };
+      db.users.push(user);
+    }
+    if (!user.uniqueId) {
+      user.uniqueId = generateUniqueId();
+    }
+    const avatarDir = path.join(UPLOAD_DIR, USER_AVATAR_FOLDER);
+    ensureDir(avatarDir);
+    const uploadExt = path.extname(req.file.originalname || req.file.filename || '').toLowerCase();
+    const safeExt = IMAGE_EXTENSIONS.has(uploadExt) ? uploadExt : '.jpg';
+    const safeUniqueId = String(user.uniqueId).replace(/[^a-zA-Z0-9_-]/g, '');
+    const baseName = `${USER_AVATAR_PREFIX}${safeUniqueId || user._id}`;
+    const existedImages = fs.readdirSync(avatarDir).filter((name) => {
+      const ext = path.extname(name).toLowerCase();
+      if (!IMAGE_EXTENSIONS.has(ext)) return false;
+      return path.basename(name, ext) === baseName;
+    });
+    existedImages.forEach((name) => {
+      const filePath = path.join(avatarDir, name);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+    const targetFileName = `${baseName}${safeExt}`;
+    const targetPath = path.join(avatarDir, targetFileName);
+    if (fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+    }
+    fs.renameSync(req.file.path, targetPath);
+    const avatarUrl = `/uploads/${USER_AVATAR_FOLDER}/${targetFileName}`;
+    user.avatar = avatarUrl;
+    user.updatedAt = new Date().toISOString();
+    writeDb(db);
+    res.json({
+      success: true,
+      url: avatarUrl,
+      filename: targetFileName
+    });
+  } catch (error) {
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    logger.error('用户头像上传失败', { error: error.message });
+    res.status(500).json({ success: false, message: '头像上传失败' });
+  }
+});
+
 app.post('/api/upload/publisher-avatar', uploadImage.single('file'), (req, res) => {
   if (!req.file) {
     res.status(400).json({ success: false, message: '缺少上传文件' });
@@ -1052,11 +1129,7 @@ app.post('/api/upload/publisher-avatar', uploadImage.single('file'), (req, res) 
   ensureDir(targetDir);
   const existedImages = fs.readdirSync(targetDir).filter((name) => {
     const ext = path.extname(name).toLowerCase();
-    if (!IMAGE_EXTENSIONS.has(ext)) {
-      return false;
-    }
-    const baseName = path.basename(name, ext);
-    return baseName === PUBLISHER_AVATAR_ALIAS;
+    return IMAGE_EXTENSIONS.has(ext);
   });
   existedImages.forEach((name) => {
     const filePath = path.join(targetDir, name);
@@ -1501,7 +1574,7 @@ app.get('/api/videos', (req, res) => {
   
   // 重新计算每个视频的真实评论数量，并使用配置的发布者头像
   const itemsWithRealCommentCount = items.map(video => {
-    const realCommentCount = db.comments.filter(c => c.videoId === video._id && !c.parentId).length;
+    const realCommentCount = countVideoComments(db, video._id);
     return {
       ...video,
       comments: realCommentCount,
@@ -1525,7 +1598,7 @@ app.get('/api/videos/:id', (req, res) => {
   const publisherAvatar = resolveValidAvatar(db.uiConfig?.publisherAvatar, defaultAvatar);
   
   // 重新计算真实评论数量，并使用配置的发布者头像
-  const realCommentCount = db.comments.filter(c => c.videoId === video._id && !c.parentId).length;
+  const realCommentCount = countVideoComments(db, video._id);
   const videoWithRealCommentCount = {
     ...video,
     comments: realCommentCount,
@@ -1647,8 +1720,9 @@ app.get('/api/videos/:id/comments', (req, res) => {
     return;
   }
   const tree = buildCommentTree(db, video._id);
+  const totalComments = countVideoComments(db, video._id);
   const { list, total, page, limit } = pagination(tree, req.query.page, req.query.limit);
-  res.json({ success: true, data: list, total, page, limit });
+  res.json({ success: true, data: list, total, totalComments, page, limit });
 });
 
 app.post('/api/videos/:id/comments', (req, res) => {
@@ -2969,6 +3043,7 @@ async function downloadVideo(url, filename) {
     }
 
     const filePath = path.join(UPLOAD_DIR, filename);
+    ensureDir(path.dirname(filePath));
     const writer = fs.createWriteStream(filePath);
     
     return new Promise((resolve, reject) => {
@@ -3012,10 +3087,16 @@ async function downloadVideo(url, filename) {
 function generateVideoCover(videoPath, videoFilename) {
   return new Promise((resolve) => {
     const coverFilename = videoFilename.replace(path.extname(videoFilename), '.jpg');
-    const coverPath = path.join(UPLOAD_DIR, coverFilename);
+    const coverRelativeDir = path.dirname(path.relative(UPLOAD_DIR, videoPath));
+    const coverOutputDir = coverRelativeDir && coverRelativeDir !== '.' ? path.join(UPLOAD_DIR, coverRelativeDir) : UPLOAD_DIR;
+    ensureDir(coverOutputDir);
     
     ffmpeg(videoPath)
       .on('end', () => {
+        if (coverRelativeDir && coverRelativeDir !== '.') {
+          resolve(`/uploads/${coverRelativeDir.replace(/\\/g, '/')}/${coverFilename}`);
+          return;
+        }
         resolve(`/uploads/${coverFilename}`);
       })
       .on('error', (err) => {
@@ -3024,7 +3105,7 @@ function generateVideoCover(videoPath, videoFilename) {
       })
       .screenshots({
         count: 1,
-        folder: UPLOAD_DIR,
+        folder: coverOutputDir,
         filename: coverFilename,
       });
   });
@@ -3293,18 +3374,20 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
       }
       
       const videoId = createId('video');
+      const videoFolder = `videos/${videoId}`;
       const filename = `${videoId}.mp4`;
+      const relativeVideoPath = `${videoFolder}/${filename}`;
       let localVideoUrl = videoUrlToDownload;
       let coverUrl = '';
       
       try {
-        logger.info('开始下载视频', { url: videoUrlToDownload, filename });
-        await downloadVideo(videoUrlToDownload, filename);
-        localVideoUrl = `/uploads/${filename}`;
+        ensureDir(path.join(UPLOAD_DIR, videoFolder));
+        logger.info('开始下载视频', { url: videoUrlToDownload, filename: relativeVideoPath });
+        await downloadVideo(videoUrlToDownload, relativeVideoPath);
+        localVideoUrl = `/uploads/${relativeVideoPath}`;
         logger.info('视频下载完成', { url: videoUrlToDownload, localPath: localVideoUrl });
         
-        // Generate cover
-        const videoPath = path.join(UPLOAD_DIR, filename);
+        const videoPath = path.join(UPLOAD_DIR, relativeVideoPath);
         try {
           coverUrl = await generateVideoCover(videoPath, filename);
         } catch (coverError) {
@@ -3328,15 +3411,6 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
         createdAt: now,
         updatedAt: now
       };
-      
-      // Move files to video folder
-      const videoFolder = `videos/${video._id}`;
-      if (video.cover) {
-        video.cover = moveFileToFolder(video.cover, videoFolder);
-      }
-      if (video.videoUrl) {
-        video.videoUrl = moveFileToFolder(video.videoUrl, videoFolder);
-      }
       
       db.videos.unshift(video);
       results.push(video);

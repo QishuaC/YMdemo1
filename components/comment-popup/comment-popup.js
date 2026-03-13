@@ -148,7 +148,7 @@ Component({
           // 同步更新评论数
           if (reset) {
             this.triggerEvent('commentcountupdate', {
-              count: res.total || commentsWithLikeStatus.length
+              count: res.totalComments ?? res.total ?? commentsWithLikeStatus.length
             });
           }
         }
@@ -200,8 +200,12 @@ Component({
         
         // 同步更新评论数（mock模式）
         if (reset) {
+          const totalComments = commentsWithLikeStatus.reduce((sum, comment) => {
+            const replyCount = Array.isArray(comment.replies) ? comment.replies.length : 0;
+            return sum + 1 + replyCount;
+          }, 0);
           this.triggerEvent('commentcountupdate', {
-            count: commentsWithLikeStatus.length
+            count: totalComments
           });
         }
       }

@@ -4,7 +4,10 @@
       <image class="user-avatar" src="{{userInfo.avatarUrl || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'}}"></image>
       <view class="user-detail">
         <view class="user-name-row">
-          <text class="user-name">{{userInfo.nickName || '点击登录'}}</text>
+          <view class="user-name-wrap">
+            <yimen-badge wx:if="{{isLoggedIn && userInfo.nickName}}" />
+            <text class="user-name">{{userInfo.nickName || '点击登录'}}</text>
+          </view>
           <view class="gender-badge" wx:if="{{userInfo && userInfo.gender && userInfo.gender !== ''}}" data-gender="{{userInfo.gender}}">
             <text class="gender-icon">{{(userInfo.gender === 1 || userInfo.gender === 'male') ? '♂' : '♀'}}</text>
           </view>

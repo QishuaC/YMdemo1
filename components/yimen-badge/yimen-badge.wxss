@@ -1,0 +1,39 @@
+.yimen-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58rpx;
+  height: 34rpx;
+  border-radius: 999rpx;
+  padding: 0 12rpx;
+  margin-right: 10rpx;
+  box-sizing: border-box;
+}
+
+.theme-light {
+  background: linear-gradient(135deg, #ffb703 0%, #ff8f00 100%);
+  box-shadow: 0 4rpx 12rpx rgba(255, 143, 0, 0.25);
+}
+
+.theme-dark {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.95) 0%, rgba(255, 143, 0, 0.95) 100%);
+  box-shadow: 0 4rpx 14rpx rgba(255, 193, 7, 0.35);
+}
+
+.badge-text {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.compact {
+  min-width: 48rpx;
+  height: 30rpx;
+  padding: 0 10rpx;
+  margin-right: 8rpx;
+}
+
+.compact .badge-text {
+  font-size: 18rpx;
+}

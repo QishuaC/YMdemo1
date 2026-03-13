@@ -1,0 +1,3 @@
+<view class="yimen-badge {{theme === 'dark' ? 'theme-dark' : 'theme-light'}} {{compact ? 'compact' : ''}}">
+  <text class="badge-text">义门</text>
+</view>

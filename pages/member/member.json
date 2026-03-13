@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "我的"
+  "navigationBarTitleText": "我的",
+  "usingComponents": {
+    "yimen-badge": "/components/yimen-badge/yimen-badge"
+  }
 }
