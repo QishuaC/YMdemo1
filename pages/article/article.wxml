@@ -1,16 +1,24 @@
 <view class="container">
-  <view class="article-list">
-    <view class="article-item card" wx:for="{{articles}}" wx:key="id" bindtap="viewArticle" data-id="{{item.id}}">
-      <image class="article-cover" src="{{item.cover}}" mode="aspectFill"></image>
+  <view class="article-list" wx:if="{{!isLoading || articles.length > 0}}">
+    <view class="article-item" wx:for="{{articles}}" wx:key="id" bindtap="viewArticle" data-id="{{item.id}}">
+      <image class="article-cover" src="{{item.cover}}" mode="aspectFill" lazy-load="{{true}}"></image>
       <view class="article-info">
         <text class="article-title">{{item.title}}</text>
         <text class="article-summary">{{item.summary}}</text>
         <view class="article-meta">
-          <image class="article-avatar" src="{{item.avatar}}"></image>
           <text class="article-author">{{item.author}}</text>
           <text class="article-time">{{item.publishTime}}</text>
           <text class="article-views">{{item.views}}阅读</text>
         </view>
+      </view>
+    </view>
+    <view class="load-more" wx:if="{{isLoadingMore}}">正在加载更多...</view>
+    <view class="load-more" wx:elif="{{!hasMore && articles.length > 0}}">没有更多文章了</view>
+  </view>
+  <view class="article-list" wx:else>
+    <view class="article-item" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="article-info">
+        <text class="article-title">加载中...</text>
       </view>
     </view>
   </view>

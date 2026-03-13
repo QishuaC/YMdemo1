@@ -7,13 +7,18 @@ Page({
     isLoggedIn: false,
     isMember: false,
     memberExpiry: '',
-    memberLevel: {
-      name: 'VIP会员',
-      icon: '👑',
-      price: 99
+    memberPlan: '',
+    selectedPlan: 'monthly',
+    memberPricing: {
+      monthly: 9.9,
+      yearly: 99
     },
-    monthlyGiftClaimed: false,
-    luckyDrawChances: 0,
+    memberBenefits: {
+      badgeDigitalClaimed: false,
+      badgePhysicalEligible: false,
+      genealogyDigitalClaimed: false,
+      genealogyPhysicalEligible: false
+    },
     points: 0,
     coupons: 5,
     totalCheckIns: 0,
@@ -39,6 +44,7 @@ Page({
     }
     this.loadMemberInfo();
     this.loadCheckInStatus();
+    this.syncMemberProfile();
   },
 
   normalizeAvatarUrl(url) {
@@ -64,11 +70,42 @@ Page({
       isLoggedIn,
       userInfo: normalizedUserInfo,
       isMember: app.globalData.isMember || false,
+      memberPlan: app.globalData.memberPlan || '',
       memberExpiry: app.globalData.memberExpiry || '',
-      monthlyGiftClaimed: app.globalData.monthlyGiftClaimed || false,
-      luckyDrawChances: app.globalData.luckyDrawChances || 0,
+      memberBenefits: app.globalData.memberBenefits || this.data.memberBenefits,
       points: app.globalData.points || 0
     });
+  },
+
+  applyMemberProfile(profile) {
+    const benefits = profile.memberBenefits || this.data.memberBenefits;
+    this.setData({
+      isMember: Boolean(profile.isMember),
+      memberPlan: profile.memberPlan || '',
+      memberExpiry: profile.memberExpiry || '',
+      memberBenefits: benefits,
+      memberPricing: profile.pricing || this.data.memberPricing
+    });
+    app.globalData.isMember = Boolean(profile.isMember);
+    app.globalData.memberPlan = profile.memberPlan || '';
+    app.globalData.memberExpiry = profile.memberExpiry || '';
+    app.globalData.memberBenefits = benefits;
+    app.saveMemberData();
+  },
+
+  syncMemberProfile() {
+    if (!this.data.isLoggedIn) {
+      return Promise.resolve();
+    }
+    return app.request({
+      url: '/api/member/profile',
+      method: 'GET',
+      timeout: 5000
+    }).then((res) => {
+      if (res.success && res.data) {
+        this.applyMemberProfile(res.data);
+      }
+    }).catch(() => {});
   },
 
   loadCheckInStatus() {
@@ -145,10 +182,7 @@ Page({
     
     app.request({
       url: '/api/checkin',
-      method: 'POST',
-      data: {
-        isMember: this.data.isMember
-      }
+      method: 'POST'
     }).then((res) => {
       wx.hideLoading();
       if (res.success) {
@@ -202,48 +236,33 @@ Page({
       return;
     }
 
+    const planType = this.data.selectedPlan === 'yearly' ? 'yearly' : 'monthly';
     wx.showLoading({ title: '开通中...' });
-    
-    setTimeout(() => {
+    app.request({
+      url: '/api/member/subscribe',
+      method: 'POST',
+      data: { planType }
+    }).then((res) => {
       wx.hideLoading();
-      const expiry = new Date();
-      expiry.setDate(expiry.getDate() + 30);
-      
-      app.globalData.isMember = true;
-      app.globalData.memberExpiry = expiry.toLocaleDateString('zh-CN');
-      app.globalData.luckyDrawChances = 3;
-      app.saveMemberData();
-      
-      wx.showToast({ title: '开通成功！', icon: 'success' });
-      this.setData({
-        isMember: true,
-        memberExpiry: app.globalData.memberExpiry,
-        luckyDrawChances: 3
-      });
-    }, 1500);
+      if (res.success && res.data) {
+        this.applyMemberProfile(res.data);
+        wx.showToast({ title: res.message || '开通成功', icon: 'success' });
+        return;
+      }
+      wx.showToast({ title: res.message || '开通失败', icon: 'none' });
+    }).catch(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    });
   },
 
-  claimGift() {
-    if (!this.data.isLoggedIn) {
-      auth.requireLogin(() => this.loadMemberInfo());
-      return;
-    }
-    if (this.data.monthlyGiftClaimed) {
-      wx.showToast({ title: '本月已领取', icon: 'none' });
-      return;
-    }
-    
-    wx.showLoading({ title: '领取中...' });
-    setTimeout(() => {
-      wx.hideLoading();
-      app.globalData.monthlyGiftClaimed = true;
-      app.saveMemberData();
-      wx.showToast({ title: '领取成功！', icon: 'success' });
-      this.setData({ monthlyGiftClaimed: true });
-    }, 1000);
+  handlePlanSelect(e) {
+    const plan = e.currentTarget.dataset.plan;
+    if (!plan || (plan !== 'monthly' && plan !== 'yearly')) return;
+    this.setData({ selectedPlan: plan });
   },
 
-  goToDraw() {
+  claimBenefit(e) {
     if (!this.data.isLoggedIn) {
       auth.requireLogin(() => this.loadMemberInfo());
       return;
@@ -252,7 +271,34 @@ Page({
       wx.showToast({ title: '请先开通会员', icon: 'none' });
       return;
     }
-    wx.navigateTo({ url: '/pages/lucky-draw/lucky-draw' });
+    const benefitType = e.currentTarget.dataset.type;
+    if (!benefitType) return;
+    const benefits = this.data.memberBenefits || {};
+    if (benefitType === 'badge' && benefits.badgeDigitalClaimed) {
+      wx.showToast({ title: '编号徽章已领取', icon: 'none' });
+      return;
+    }
+    if (benefitType === 'genealogy' && benefits.genealogyDigitalClaimed) {
+      wx.showToast({ title: '电子通谱已领取', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '领取中...' });
+    app.request({
+      url: '/api/member/claim-benefit',
+      method: 'POST',
+      data: { benefitType }
+    }).then((res) => {
+      wx.hideLoading();
+      if (res.success && res.data) {
+        this.applyMemberProfile(res.data);
+        wx.showToast({ title: res.message || '领取成功', icon: 'success' });
+        return;
+      }
+      wx.showToast({ title: res.message || '领取失败', icon: 'none' });
+    }).catch(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    });
   },
 
   goToPointsExchange() {
@@ -260,7 +306,7 @@ Page({
       auth.requireLogin(() => {});
       return;
     }
-    wx.navigateTo({ url: '/pages/points-exchange/points-exchange' });
+    wx.navigateTo({ url: '/packageActivity/pages/points-exchange/points-exchange' });
   },
 
   handleMenu(e) {
@@ -270,11 +316,11 @@ Page({
       return;
     }
     if (menu.title === '个人信息') {
-      wx.navigateTo({ url: '/pages/profile/profile' });
+      wx.navigateTo({ url: '/packageActivity/pages/profile/profile' });
     } else if (menu.title === '我的订单') {
-      wx.navigateTo({ url: '/pages/order/order' });
+      wx.navigateTo({ url: '/packageShop/pages/order/order' });
     } else if (menu.title === '收货地址') {
-      wx.navigateTo({ url: '/pages/address/address' });
+      wx.navigateTo({ url: '/packageShop/pages/address/address' });
     } else if (menu.title === '义门客服') {
       wx.navigateTo({ url: '/pages/customer-service/customer-service' });
     } else {

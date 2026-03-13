@@ -23,11 +23,12 @@
       <button class="menu-item" data-module="articles">文章管理</button>
       <button class="menu-item" data-module="products">商品管理</button>
       <button class="menu-item" data-module="orders">订单管理</button>
-      <button class="menu-item" data-module="security-policy">安全策略</button>
       <button class="menu-item" data-module="users">用户管理</button>
+      <button class="menu-item" data-module="members">会员管理</button>
       <button class="menu-item" data-module="points">积分管理</button>
       <button class="menu-item" data-module="exchange-products">积分兑换商品</button>
       <button class="menu-item" data-module="ui-config">UI设置</button>
+      <button class="menu-item" data-module="security-policy">安全策略</button>
     </aside>
 
     <main class="main">
@@ -260,70 +261,7 @@
         </div>
       </section>
 
-      <section id="security-policyModule" class="module">
-        <div class="module-head">
-          <h2>安全策略</h2>
-          <div class="module-actions">
-            <button id="refreshSecurityPolicyBtn" class="btn">刷新策略</button>
-            <button id="saveSecurityPolicyBtn" class="btn primary">保存策略</button>
-          </div>
-        </div>
-        <div class="form-wrap" style="padding: 20px;">
-          <div class="security-grid">
-            <div class="security-card">
-              <h3>监测周期</h3>
-              <div class="form-row">
-                <label for="securityMonitorWindowInput">周期（分钟）</label>
-                <input type="number" id="securityMonitorWindowInput" min="1" max="1440" value="10">
-              </div>
-              <div class="hint">异常列表仅展示该周期内触发的数据</div>
-            </div>
-            <div class="security-card">
-              <h3>行为策略</h3>
-              <div class="security-behavior-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>行为</th>
-                      <th>启用</th>
-                      <th>周期(分钟)</th>
-                      <th>次数阈值</th>
-                      <th>封禁(分钟)</th>
-                      <th>提示语</th>
-                    </tr>
-                  </thead>
-                  <tbody id="securityPolicyTable"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
 
-          <div class="security-card" style="margin-top: 20px;">
-            <div class="security-anomaly-head">
-              <h3>异常监测数据</h3>
-              <div class="module-actions">
-                <button id="refreshSecurityAnomaliesBtn" class="btn">刷新异常</button>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>时间</th>
-                    <th>行为</th>
-                    <th>用户</th>
-                    <th>IP</th>
-                    <th>阈值</th>
-                    <th>当前次数</th>
-                    <th>处理结果</th>
-                  </tr>
-                </thead>
-                <tbody id="securityAnomaliesTable"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section id="usersModule" class="module">
         <div class="module-head">
@@ -358,6 +296,42 @@
               </tr>
             </thead>
             <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="membersModule" class="module">
+        <div class="module-head">
+          <h2>会员管理</h2>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="membersLimitSelect">显示条数：</label>
+              <select id="membersLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>用户编号</th>
+                <th>会员状态</th>
+                <th>会员套餐</th>
+                <th>开通时间</th>
+                <th>到期时间</th>
+                <th>折扣</th>
+                <th>已领权益</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="membersTable"></tbody>
           </table>
         </div>
       </section>
@@ -500,6 +474,71 @@
             <textarea id="uiTabBarInput" rows="10" placeholder="请输入 JSON 格式配置"></textarea>
             <div class="hint" style="font-size: 12px; color: #666; margin-top: 5px;">
               格式示例: [{"pagePath":"/pages/index/index","text":"义闻","icon":"🏠"}, ...]
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="security-policyModule" class="module">
+        <div class="module-head">
+          <h2>安全策略</h2>
+          <div class="module-actions">
+            <button id="refreshSecurityPolicyBtn" class="btn">刷新策略</button>
+            <button id="saveSecurityPolicyBtn" class="btn primary">保存策略</button>
+          </div>
+        </div>
+        <div class="form-wrap" style="padding: 20px;">
+          <div class="security-grid">
+            <div class="security-card">
+              <h3>监测周期</h3>
+              <div class="form-row">
+                <label for="securityMonitorWindowInput">周期（分钟）</label>
+                <input type="number" id="securityMonitorWindowInput" min="1" max="1440" value="10">
+              </div>
+              <div class="hint">异常列表仅展示该周期内触发的数据</div>
+            </div>
+            <div class="security-card">
+              <h3>行为策略</h3>
+              <div class="security-behavior-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>行为</th>
+                      <th>启用</th>
+                      <th>周期(分钟)</th>
+                      <th>次数阈值</th>
+                      <th>封禁(分钟)</th>
+                      <th>提示语</th>
+                    </tr>
+                  </thead>
+                  <tbody id="securityPolicyTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="security-card" style="margin-top: 20px;">
+            <div class="security-anomaly-head">
+              <h3>异常监测数据</h3>
+              <div class="module-actions">
+                <button id="refreshSecurityAnomaliesBtn" class="btn">刷新异常</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>行为</th>
+                    <th>用户</th>
+                    <th>IP</th>
+                    <th>阈值</th>
+                    <th>当前次数</th>
+                    <th>处理结果</th>
+                  </tr>
+                </thead>
+                <tbody id="securityAnomaliesTable"></tbody>
+              </table>
             </div>
           </div>
         </div>

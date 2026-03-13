@@ -21,7 +21,7 @@
   <swiper class="banner-swiper" indicator-dots="true" autoplay="true" interval="4000" circular="true">
     <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerClick" data-id="{{item.id}}">
       <view class="banner-item" style="background-color: {{item.bgColor}}">
-        <image class="banner-image" src="{{item.image}}" mode="aspectFill"></image>
+        <image class="banner-image" src="{{item.image}}" mode="aspectFill" lazy-load="{{true}}"></image>
         <view class="banner-content">
           <view class="banner-title">{{item.title}}</view>
           <view class="banner-subtitle">{{item.subtitle}}</view>
@@ -31,10 +31,19 @@
     </swiper-item>
   </swiper>
 
-  <view class="product-grid">
+  <view class="skeleton-grid" wx:if="{{isLoadingProducts && products.length === 0}}">
+    <view class="skeleton-item" wx:for="{{[1,2,3,4]}}" wx:key="*this">
+      <view class="skeleton-cover"></view>
+      <view class="skeleton-line skeleton-title"></view>
+      <view class="skeleton-line skeleton-meta"></view>
+      <view class="skeleton-line skeleton-price"></view>
+    </view>
+  </view>
+
+  <view class="product-grid" wx:else>
     <view class="product-item" wx:for="{{products}}" wx:key="id" bindtap="viewProduct" data-id="{{item.id}}">
       <view class="product-image-wrapper">
-        <image class="product-cover" src="{{item.cover}}" mode="aspectFill"></image>
+        <image class="product-cover" src="{{item.cover}}" mode="aspectFill" lazy-load="{{true}}"></image>
         <view class="product-tags" wx:if="{{item.promoTags && item.promoTags.length > 0}}">
           <text class="tag promo-tag" wx:for="{{item.promoTags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
         </view>
@@ -49,7 +58,11 @@
         </view>
         <view class="product-bottom">
           <view class="price-wrapper">
-            <text class="price">¥{{item.price}}</text>
+            <view class="price-main">
+              <view class="member-tag" wx:if="{{item.showMemberPrice}}">会员价</view>
+              <text class="price-symbol">¥</text>
+              <text class="price-value">{{item.price}}</text>
+            </view>
             <text class="original-price" wx:if="{{item.originalPrice}}">¥{{item.originalPrice}}</text>
           </view>
           <view class="product-right">
@@ -58,5 +71,8 @@
         </view>
       </view>
     </view>
+    <view class="load-more" wx:if="{{isLoadingMore}}">正在加载更多商品...</view>
+    <view class="load-more" wx:elif="{{hasMoreProducts}}">上拉加载更多商品</view>
+    <view class="load-more" wx:elif="{{products.length > 0}}">已经到底了</view>
   </view>
 </view>

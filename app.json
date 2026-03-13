@@ -1,23 +1,40 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/video/video",
-    "pages/article/article",
-    "pages/article/detail",
     "pages/shop/shop",
     "pages/member/member",
-    "pages/profile/profile",
     "pages/login/login",
-    "pages/cart/cart",
-    "pages/product/product",
-    "pages/order/order",
-    "pages/payment/payment",
-    "pages/lucky-draw/lucky-draw",
-    "pages/address/address",
-    "pages/points-exchange/points-exchange",
-    "pages/points-history/points-history",
     "pages/yixun/yixun",
     "pages/customer-service/customer-service"
+  ],
+  "subPackages": [
+    {
+      "root": "packageContent",
+      "pages": [
+        "pages/video/video",
+        "pages/article/article",
+        "pages/article/detail"
+      ]
+    },
+    {
+      "root": "packageShop",
+      "pages": [
+        "pages/cart/cart",
+        "pages/product/product",
+        "pages/order/order",
+        "pages/payment/payment",
+        "pages/address/address"
+      ]
+    },
+    {
+      "root": "packageActivity",
+      "pages": [
+        "pages/lucky-draw/lucky-draw",
+        "pages/points-exchange/points-exchange",
+        "pages/points-history/points-history",
+        "pages/profile/profile"
+      ]
+    }
   ],
   "window": {
     "backgroundTextStyle": "light",

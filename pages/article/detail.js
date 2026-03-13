@@ -1,69 +1,66 @@
-const { showShareToast, buildShareConfig } = require('../../utils/share.js');
-const app = getApp();
-
+// pages/article/detail.js
 Page({
+
+  /**
+   * 页面的初始数据
+   */
   data: {
-    article: null,
-    baseUrl: 'http://localhost:3000'
+
   },
 
+  /**
+   * 生命周期函数--监听页面加载
+   */
   onLoad(options) {
-    const { id } = options;
-    if (id) {
-      this.fetchArticleDetail(id);
-    }
+
   },
 
-  fetchArticleDetail(id) {
-    app.request({
-      url: `/api/articles/${id}`
-    }).then(res => {
-      if (res.success) {
-        const article = res.article;
-        article.id = article._id;
-        article.cover = article.cover.startsWith('http') ? article.cover : this.data.baseUrl + article.cover;
-        article.author = article.author || '管理员';
-        article.avatar = article.avatar || 'https://picsum.photos/100/100?random=111';
-        article.publishTime = this.formatTime(article.createdAt);
-        
-        this.setData({
-          article: article
-        });
-      }
-    }).catch(err => {
-      console.error('获取文章详情失败:', err);
-      wx.showToast({
-        title: '加载文章失败',
-        icon: 'none'
-      });
-    });
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+
   },
 
-  formatTime(timeStr) {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`;
+  /**
+   * 生命周期函数--监听页面显示
+   */
+  onShow() {
+
   },
 
-  doShare() {
-    showShareToast();
+  /**
+   * 生命周期函数--监听页面隐藏
+   */
+  onHide() {
+
   },
 
+  /**
+   * 生命周期函数--监听页面卸载
+   */
+  onUnload() {
+
+  },
+
+  /**
+   * 页面相关事件处理函数--监听用户下拉动作
+   */
+  onPullDownRefresh() {
+
+  },
+
+  /**
+   * 页面上拉触底事件的处理函数
+   */
+  onReachBottom() {
+
+  },
+
+  /**
+   * 用户点击右上角分享
+   */
   onShareAppMessage() {
-    const article = this.data.article;
-    return buildShareConfig({
-      title: article ? article.title : '精彩文章推荐',
-      path: '/pages/article/detail?id=' + (article ? article.id : ''),
-      imageUrl: article ? article.cover : ''
-    });
-  },
 
-  onShareTimeline() {
-    const article = this.data.article;
-    return buildShareConfig({
-      title: article ? article.title : '精彩文章推荐',
-      query: 'id=' + (article ? article.id : ''),
-      imageUrl: article ? article.cover : ''
-    });
   }
 })

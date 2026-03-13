@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -264,6 +264,11 @@ const ADMIN_DIR = path.join(__dirname, 'admin');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const PRODUCT_SERVICE_TAGS = ['7天无理由', '运费险', '正品保障'];
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.avi', '.wmv', '.mkv', '.webm', '.m4v']);
+const MEMBER_PLAN_PRICING = {
+  monthly: 9.9,
+  yearly: 99
+};
+const MEMBER_DISCOUNT_RATE = 0.95;
 
 const OFFICIAL_PUBLISHER = {
   id: 'pub_official_001',
@@ -403,9 +408,109 @@ function toPrice(value) {
   return Number.isFinite(num) ? num : 0;
 }
 
+function toPriceOneDecimal(value) {
+  const num = toPrice(value);
+  return Math.round((num + Number.EPSILON) * 10) / 10;
+}
+
 function toInt(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? Math.floor(num) : fallback;
+}
+
+function applyDiscountPrice(subtotal, discountRate) {
+  const base = toPrice(subtotal);
+  const rate = toPrice(discountRate);
+  if (rate >= 1) return toPriceOneDecimal(base);
+  return Math.max(0, toPriceOneDecimal(base * rate));
+}
+
+function buildDefaultMemberBenefits() {
+  return {
+    badgeDigitalClaimed: false,
+    badgePhysicalEligible: false,
+    genealogyDigitalClaimed: false,
+    genealogyPhysicalEligible: false
+  };
+}
+
+function formatDateYmd(input) {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function ensureUserMembershipFields(user) {
+  if (!user || typeof user !== 'object') return;
+  if (user.isMember === undefined) user.isMember = false;
+  if (!user.memberPlan) user.memberPlan = '';
+  if (!user.memberExpiry) user.memberExpiry = '';
+  if (!user.memberStartedAt) user.memberStartedAt = '';
+  if (!user.memberBenefits || typeof user.memberBenefits !== 'object') {
+    user.memberBenefits = buildDefaultMemberBenefits();
+  } else {
+    user.memberBenefits = {
+      ...buildDefaultMemberBenefits(),
+      ...user.memberBenefits
+    };
+  }
+}
+
+function getUserMemberStatus(user) {
+  ensureUserMembershipFields(user);
+  const now = Date.now();
+  const expiryTs = user.memberExpiry ? new Date(user.memberExpiry).getTime() : 0;
+  const hasValidExpiry = Number.isFinite(expiryTs) && expiryTs > now;
+  const planType = user.memberPlan === 'yearly' ? 'yearly' : (user.memberPlan === 'monthly' ? 'monthly' : '');
+  const isMember = Boolean(user.isMember && hasValidExpiry && planType);
+  return {
+    isMember,
+    memberPlan: isMember ? planType : '',
+    memberExpiry: isMember ? formatDateYmd(user.memberExpiry) : '',
+    memberExpiryRaw: isMember ? user.memberExpiry : '',
+    memberBenefits: user.memberBenefits || buildDefaultMemberBenefits(),
+    discountRate: isMember ? MEMBER_DISCOUNT_RATE : 1
+  };
+}
+
+function getOrCreateUser(db, userId, fallbackNickname = '微信用户') {
+  let user = db.users.find((item) => item._id === userId);
+  if (!user) {
+    user = {
+      _id: userId,
+      uniqueId: generateUniqueId(),
+      userNumber: generateUserNumber(db.users),
+      nickname: fallbackNickname,
+      avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
+      gender: '',
+      phone: '',
+      points: 0,
+      checkIns: [],
+      pointsHistory: [],
+      addresses: [],
+      openId: 'mock_openid_the code is a mock one',
+      nicknameColor: '',
+      isMember: false,
+      memberPlan: '',
+      memberExpiry: '',
+      memberStartedAt: '',
+      memberBenefits: buildDefaultMemberBenefits(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    db.users.push(user);
+  }
+  if (!user.uniqueId) user.uniqueId = generateUniqueId();
+  if (!user.userNumber) user.userNumber = generateUserNumber(db.users);
+  if (!Array.isArray(user.checkIns)) user.checkIns = [];
+  if (user.points === undefined) user.points = 0;
+  if (!Array.isArray(user.pointsHistory)) user.pointsHistory = [];
+  if (!Array.isArray(user.addresses)) user.addresses = [];
+  ensureUserMembershipFields(user);
+  return user;
 }
 
 function generateUserNumber(users) {
@@ -599,7 +704,12 @@ function createInitialDb() {
         points: 0,
         checkIns: [],
         pointsHistory: [],
-        nicknameColor: ''
+        nicknameColor: '',
+        isMember: false,
+        memberPlan: '',
+        memberExpiry: '',
+        memberStartedAt: '',
+        memberBenefits: buildDefaultMemberBenefits()
       }
     ],
     admins: [
@@ -864,7 +974,8 @@ function buildCommentTree(db, videoId) {
       _id: userId,
       nickname: user?.nickname || fallbackNickname || '微信用户',
       avatar: user?.avatar || fallbackAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-      nicknameColor: user?.nicknameColor || ''
+      nicknameColor: user?.nicknameColor || '',
+      isMember: user?.isMember || false
     };
   };
   
@@ -1022,30 +1133,7 @@ app.get('/api/checkin/status', (req, res) => {
   const userId = req.header('x-user-id') || 'wx_user_001';
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = getMonthKey(today);
-  
-  let user = db.users.find((item) => item._id === userId);
-  if (!user) {
-    user = {
-      _id: userId,
-      uniqueId: generateUniqueId(),
-      userNumber: generateUserNumber(db.users),
-      nickname: '微信用户',
-      avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-      points: 0,
-      checkIns: []
-    };
-    db.users.push(user);
-  }
-  
-  if (!user.checkIns) {
-    user.checkIns = [];
-  }
-  if (user.points === undefined) {
-    user.points = 0;
-  }
-  if (!user.pointsHistory) {
-    user.pointsHistory = [];
-  }
+  const user = getOrCreateUser(db, userId);
   
   const todayCheckIn = user.checkIns.find((item) => item.date === today);
   const hasCheckedIn = !!todayCheckIn;
@@ -1070,34 +1158,11 @@ app.get('/api/checkin/status', (req, res) => {
 app.post('/api/checkin', (req, res) => {
   const db = readDbWithCache();
   const userId = req.header('x-user-id') || 'wx_user_001';
-  const isMember = Boolean(req.body.isMember);
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = getMonthKey(today);
   const now = new Date().toISOString();
-  
-  let user = db.users.find((item) => item._id === userId);
-  if (!user) {
-    user = {
-      _id: userId,
-      uniqueId: generateUniqueId(),
-      userNumber: generateUserNumber(db.users),
-      nickname: '微信用户',
-      avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-      points: 0,
-      checkIns: []
-    };
-    db.users.push(user);
-  }
-  
-  if (!user.checkIns) {
-    user.checkIns = [];
-  }
-  if (user.points === undefined) {
-    user.points = 0;
-  }
-  if (!user.pointsHistory) {
-    user.pointsHistory = [];
-  }
+  const user = getOrCreateUser(db, userId);
+  const memberStatus = getUserMemberStatus(user);
   
   const todayCheckIn = user.checkIns.find((item) => item.date === today);
   if (todayCheckIn) {
@@ -1115,8 +1180,8 @@ app.post('/api/checkin', (req, res) => {
   }
   
   const basePoints = 10;
-  const earnedPoints = isMember ? basePoints * 2 : basePoints;
-  const description = isMember ? '每日签到（会员双倍）' : '每日签到';
+  const earnedPoints = memberStatus.isMember ? basePoints * 2 : basePoints;
+  const description = memberStatus.isMember ? '每日签到（会员双倍）' : '每日签到';
   
   user.checkIns.push({
     date: today,
@@ -1149,6 +1214,95 @@ app.post('/api/checkin', (req, res) => {
   });
 });
 
+app.get('/api/member/profile', (req, res) => {
+  const db = readDbWithCache();
+  const userId = req.header('x-user-id') || 'wx_user_001';
+  const user = getOrCreateUser(db, userId);
+  const memberStatus = getUserMemberStatus(user);
+  writeDb(db);
+  res.json({
+    success: true,
+    data: {
+      ...memberStatus,
+      pricing: MEMBER_PLAN_PRICING
+    }
+  });
+});
+
+app.post('/api/member/subscribe', (req, res) => {
+  const db = readDbWithCache();
+  const userId = req.header('x-user-id') || 'wx_user_001';
+  const planType = req.body?.planType === 'yearly' ? 'yearly' : (req.body?.planType === 'monthly' ? 'monthly' : '');
+  if (!planType) {
+    res.status(400).json({ success: false, message: '会员套餐无效' });
+    return;
+  }
+  const user = getOrCreateUser(db, userId);
+  const now = new Date();
+  const currentStatus = getUserMemberStatus(user);
+  const baseDate = currentStatus.isMember && currentStatus.memberExpiryRaw ? new Date(currentStatus.memberExpiryRaw) : now;
+  if (Number.isNaN(baseDate.getTime())) {
+    baseDate.setTime(now.getTime());
+  }
+  if (planType === 'yearly') {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
+  } else {
+    baseDate.setMonth(baseDate.getMonth() + 1);
+  }
+  user.isMember = true;
+  user.memberPlan = planType;
+  user.memberStartedAt = now.toISOString();
+  user.memberExpiry = baseDate.toISOString();
+  user.memberBenefits = {
+    ...buildDefaultMemberBenefits(),
+    ...user.memberBenefits,
+    badgePhysicalEligible: planType === 'yearly' ? true : Boolean(user.memberBenefits?.badgePhysicalEligible),
+    genealogyPhysicalEligible: planType === 'yearly' ? true : Boolean(user.memberBenefits?.genealogyPhysicalEligible)
+  };
+  user.updatedAt = new Date().toISOString();
+  writeDb(db);
+  const memberStatus = getUserMemberStatus(user);
+  res.json({
+    success: true,
+    message: planType === 'yearly' ? '年卡开通成功' : '月卡开通成功',
+    data: {
+      ...memberStatus,
+      pricing: MEMBER_PLAN_PRICING
+    }
+  });
+});
+
+app.post('/api/member/claim-benefit', (req, res) => {
+  const db = readDbWithCache();
+  const userId = req.header('x-user-id') || 'wx_user_001';
+  const benefitType = req.body?.benefitType === 'badge' ? 'badge' : (req.body?.benefitType === 'genealogy' ? 'genealogy' : '');
+  if (!benefitType) {
+    res.status(400).json({ success: false, message: '权益类型无效' });
+    return;
+  }
+  const user = getOrCreateUser(db, userId);
+  const memberStatus = getUserMemberStatus(user);
+  if (!memberStatus.isMember) {
+    res.status(403).json({ success: false, message: '请先开通会员' });
+    return;
+  }
+  if (benefitType === 'badge') {
+    user.memberBenefits.badgeDigitalClaimed = true;
+  } else {
+    user.memberBenefits.genealogyDigitalClaimed = true;
+  }
+  user.updatedAt = new Date().toISOString();
+  writeDb(db);
+  res.json({
+    success: true,
+    message: benefitType === 'badge' ? '义门编号徽章已领取' : '陈氏通谱电子版已领取',
+    data: {
+      ...getUserMemberStatus(user),
+      pricing: MEMBER_PLAN_PRICING
+    }
+  });
+});
+
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body || {};
   const db = readDbWithCache();
@@ -1175,27 +1329,7 @@ app.post('/api/auth/login', (req, res) => {
   }
   const db = readDbWithCache();
   const fallbackUserId = 'wx_user_001';
-  let user = db.users.find((item) => item._id === fallbackUserId) || db.users[0];
-  if (!user) {
-    user = {
-      _id: fallbackUserId,
-      uniqueId: generateUniqueId(),
-      userNumber: generateUserNumber(db.users),
-      nickname: '微信用户',
-      avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-      gender: '',
-      phone: '',
-      points: 0,
-      checkIns: [],
-      pointsHistory: [],
-      addresses: [],
-      openId: 'mock_openid_the code is a mock one',
-      nicknameColor: ''
-    };
-    db.users.push(user);
-  }
-  if (!user.uniqueId) user.uniqueId = generateUniqueId();
-  if (!user.userNumber) user.userNumber = generateUserNumber(db.users);
+  const user = getOrCreateUser(db, fallbackUserId);
   if (userInfo && typeof userInfo === 'object') {
     const isNewUser = user.nickname === '微信用户' || !user.nickname;
     if (isNewUser && typeof userInfo.nickName === 'string' && userInfo.nickName.trim()) {
@@ -1207,6 +1341,7 @@ app.post('/api/auth/login', (req, res) => {
   }
   user.openId = user.openId || 'mock_openid_the code is a mock one';
   user.updatedAt = new Date().toISOString();
+  const memberStatus = getUserMemberStatus(user);
   writeDb(db);
   res.json({
     success: true,
@@ -1220,7 +1355,11 @@ app.post('/api/auth/login', (req, res) => {
       gender: user.gender || '',
       phone: user.phone || '',
       points: Number(user.points || 0),
-      nicknameColor: user.nicknameColor || ''
+      nicknameColor: user.nicknameColor || '',
+      isMember: memberStatus.isMember,
+      memberPlan: memberStatus.memberPlan,
+      memberExpiry: memberStatus.memberExpiry,
+      memberBenefits: memberStatus.memberBenefits
     }
   });
 });
@@ -1589,12 +1728,12 @@ app.get('/api/ui-config', (req, res) => {
         {
           id: 1,
           image: 'https://picsum.photos/800/300?random=100',
-          targetPage: '/pages/product/product?id=1'
+          targetPage: '/packageShop/pages/product/product?id=1'
         },
         {
           id: 2,
           image: 'https://picsum.photos/800/300?random=101',
-          targetPage: '/pages/product/product?id=3'
+          targetPage: '/packageShop/pages/product/product?id=3'
         }
       ],
       tabBar: [
@@ -1613,12 +1752,12 @@ app.get('/api/ui-config', (req, res) => {
       {
         id: 1,
         image: 'https://picsum.photos/800/300?random=100',
-        targetPage: '/pages/product/product?id=1'
+        targetPage: '/packageShop/pages/product/product?id=1'
       },
       {
         id: 2,
         image: 'https://picsum.photos/800/300?random=101',
-        targetPage: '/pages/product/product?id=3'
+        targetPage: '/packageShop/pages/product/product?id=3'
       }
     ];
     writeDb(db);
@@ -2142,7 +2281,8 @@ app.get('/api/comments/:commentId/replies', (req, res) => {
     return {
       _id: userId,
       nickname: user?.nickname || fallbackNickname || '微信用户',
-      avatar: user?.avatar || fallbackAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
+      avatar: user?.avatar || fallbackAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
+      isMember: user?.isMember || false
     };
   };
   
@@ -2734,22 +2874,31 @@ app.get('/api/orders/:id', (req, res) => {
 app.post('/api/orders', (req, res) => {
   const db = readDbWithCache();
   const userId = req.body.userId || req.header('x-user-id') || 'wx_user_001';
+  const user = getOrCreateUser(db, userId, req.body.userName || '微信用户');
+  const memberStatus = getUserMemberStatus(user);
   const securityResult = enforceBehaviorSecurity(req, res, db, 'order_submit', { userId });
   if (securityResult.blocked) {
     return;
   }
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   const now = new Date().toISOString();
-  const totalPrice = req.body.totalPrice !== undefined
-    ? toPrice(req.body.totalPrice)
-    : items.reduce((sum, item) => sum + toPrice(item.price) * toInt(item.quantity, 1), 0);
+  const subtotalPrice = items.length > 0
+    ? items.reduce((sum, item) => sum + toPrice(item.price) * toInt(item.quantity, 1), 0)
+    : toPrice(req.body.totalPrice);
+  const discountRate = memberStatus.isMember ? MEMBER_DISCOUNT_RATE : 1;
+  const totalPrice = applyDiscountPrice(subtotalPrice, discountRate);
+  const discountAmount = toPriceOneDecimal(subtotalPrice - totalPrice);
 
   const order = {
     _id: createId('order'),
     orderNumber: `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`,
     userId,
-    userName: req.body.userName || '微信用户',
+    userName: req.body.userName || user.nickname || '微信用户',
     items,
+    originalTotalPrice: toPriceOneDecimal(subtotalPrice),
+    discountRate,
+    discountAmount,
+    memberDiscountApplied: memberStatus.isMember,
     totalPrice,
     status: req.body.status || 'pending',
     address: req.body.address || null,
@@ -2782,6 +2931,7 @@ app.put('/api/orders/:id', (req, res) => {
     res.status(404).json({ success: false, message: '订单不存在' });
     return;
   }
+  const previousStatus = order.status;
   const nextStatus = req.body.status ?? order.status;
   if (req.body.status !== undefined && nextStatus === 'refunded' && order.status !== 'refund_pending') {
     res.status(400).json({ success: false, message: '仅退款申请中的订单可改为已退款' });
@@ -2805,6 +2955,9 @@ app.put('/api/orders/:id', (req, res) => {
     }
     order.trackingNumber = req.body.trackingNumber;
   }
+  if (previousStatus === 'refund_pending' && nextStatus === 'refunded') {
+    rollbackOrderEarnedPoints(db, order);
+  }
   order.updatedAt = new Date().toISOString();
   writeDb(db);
   res.json({ success: true, order });
@@ -2825,29 +2978,7 @@ app.post('/api/orders/:id/pay', (req, res) => {
   order.shippingAddress = req.body.shippingAddress ?? order.shippingAddress ?? normalizeShippingAddress(order.address);
   order.updatedAt = new Date().toISOString();
   
-  let user = db.users.find((item) => item._id === order.userId);
-  if (!user) {
-    user = {
-      _id: order.userId,
-      uniqueId: generateUniqueId(),
-      userNumber: generateUserNumber(db.users),
-      nickname: order.userName || '微信用户',
-      avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-      points: 0,
-      checkIns: []
-    };
-    db.users.push(user);
-  }
-  
-  if (!user.checkIns) {
-    user.checkIns = [];
-  }
-  if (user.points === undefined) {
-    user.points = 0;
-  }
-  if (!user.pointsHistory) {
-    user.pointsHistory = [];
-  }
+  const user = getOrCreateUser(db, order.userId, order.userName || '微信用户');
   
   const earnedPoints = Math.floor(order.totalPrice);
   user.points += earnedPoints;
@@ -3178,6 +3309,33 @@ app.get('/api/users', (req, res) => {
   res.json({ success: true, users, total, page: realPage, limit: realLimit });
 });
 
+app.get('/api/members', (req, res) => {
+  const db = readDbWithCache();
+  const { limit, page, keyword } = req.query;
+  let items = [...db.users].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+  if (keyword) {
+    const kw = String(keyword).toLowerCase();
+    items = items.filter((item) =>
+      (item.nickname && item.nickname.toLowerCase().includes(kw)) ||
+      (item.userNumber && item.userNumber.toLowerCase().includes(kw)) ||
+      (item.uniqueId && item.uniqueId.toLowerCase().includes(kw))
+    );
+  }
+
+  const rows = items.map((user) => {
+    const memberStatus = getUserMemberStatus(user);
+    return {
+      ...user,
+      ...memberStatus
+    };
+  });
+
+  const { list, total, page: realPage, limit: realLimit } = pagination(rows, page, limit || rows.length);
+  writeDb(db);
+  res.json({ success: true, members: list, total, page: realPage, limit: realLimit });
+});
+
 app.get('/api/users/:id', (req, res) => {
   const db = readDbWithCache();
   const user = db.users.find((item) => item._id === req.params.id);
@@ -3191,6 +3349,76 @@ app.get('/api/users/:id', (req, res) => {
     .reduce((sum, order) => sum + toPrice(order.totalPrice), 0);
   
   res.json({ success: true, user: { ...user, totalSpent } });
+});
+
+app.post('/api/members/:id/activate', (req, res) => {
+  const db = readDbWithCache();
+  const user = db.users.find((item) => item._id === req.params.id);
+  if (!user) {
+    res.status(404).json({ success: false, message: '用户不存在' });
+    return;
+  }
+  const planType = req.body?.planType === 'yearly' ? 'yearly' : (req.body?.planType === 'monthly' ? 'monthly' : '');
+  if (!planType) {
+    res.status(400).json({ success: false, message: '会员套餐无效' });
+    return;
+  }
+  ensureUserMembershipFields(user);
+  const now = new Date();
+  const currentStatus = getUserMemberStatus(user);
+  const baseDate = currentStatus.isMember && currentStatus.memberExpiryRaw ? new Date(currentStatus.memberExpiryRaw) : now;
+  if (Number.isNaN(baseDate.getTime())) {
+    baseDate.setTime(now.getTime());
+  }
+  if (planType === 'yearly') {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
+  } else {
+    baseDate.setMonth(baseDate.getMonth() + 1);
+  }
+  user.isMember = true;
+  user.memberPlan = planType;
+  user.memberStartedAt = now.toISOString();
+  user.memberExpiry = baseDate.toISOString();
+  user.memberBenefits = {
+    ...buildDefaultMemberBenefits(),
+    ...user.memberBenefits,
+    badgePhysicalEligible: planType === 'yearly' ? true : Boolean(user.memberBenefits?.badgePhysicalEligible),
+    genealogyPhysicalEligible: planType === 'yearly' ? true : Boolean(user.memberBenefits?.genealogyPhysicalEligible)
+  };
+  user.updatedAt = now.toISOString();
+  writeDb(db);
+  res.json({
+    success: true,
+    message: planType === 'yearly' ? '已开通年卡会员' : '已开通月卡会员',
+    member: {
+      ...user,
+      ...getUserMemberStatus(user)
+    }
+  });
+});
+
+app.post('/api/members/:id/deactivate', (req, res) => {
+  const db = readDbWithCache();
+  const user = db.users.find((item) => item._id === req.params.id);
+  if (!user) {
+    res.status(404).json({ success: false, message: '用户不存在' });
+    return;
+  }
+  user.isMember = false;
+  user.memberPlan = '';
+  user.memberExpiry = '';
+  user.memberStartedAt = '';
+  user.memberBenefits = buildDefaultMemberBenefits();
+  user.updatedAt = new Date().toISOString();
+  writeDb(db);
+  res.json({
+    success: true,
+    message: '已取消会员资格',
+    member: {
+      ...user,
+      ...getUserMemberStatus(user)
+    }
+  });
 });
 
 app.put('/api/users/:id', (req, res) => {

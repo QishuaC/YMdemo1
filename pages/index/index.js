@@ -46,6 +46,11 @@ Page({
     });
   },
 
+  resolveAssetUrl(path) {
+    if (!path) return '';
+    return path.startsWith('http') ? path : this.data.baseUrl + path;
+  },
+
   fetchArticles() {
     this.setData({ 'loading.articles': true });
     
@@ -58,7 +63,7 @@ Page({
         const articles = res.articles.map(article => ({
           id: article._id,
           title: article.title,
-          cover: article.cover.startsWith('http') ? article.cover : this.data.baseUrl + article.cover,
+          cover: this.resolveAssetUrl(article.cover),
           summary: article.summary,
           author: article.author || '管理员',
           avatar: article.avatar || 'https://picsum.photos/100/100?random=111',
@@ -92,7 +97,7 @@ Page({
         const products = res.products.map(product => ({
           id: product._id,
           name: product.name,
-          cover: product.cover.startsWith('http') ? product.cover : this.data.baseUrl + product.cover,
+          cover: this.resolveAssetUrl(product.cover),
           price: product.price,
           originalPrice: product.originalPrice,
           sales: product.sales || 0,
@@ -133,7 +138,7 @@ Page({
 
   goToArticle() {
     wx.navigateTo({
-      url: '/pages/article/article'
+      url: '/packageContent/pages/article/article'
     });
   },
 
@@ -146,14 +151,14 @@ Page({
   viewArticle(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
-      url: `/pages/article/detail?id=${id}`
+      url: `/packageContent/pages/article/detail?id=${id}`
     });
   },
 
   viewProduct(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
-      url: '/pages/product/product?id=' + id
+      url: '/packageShop/pages/product/product?id=' + id
     });
   }
 })

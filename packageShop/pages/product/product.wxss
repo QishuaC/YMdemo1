@@ -23,21 +23,62 @@
 
 .price-row {
   display: flex;
+  align-items: flex-end;
+  margin-bottom: 20rpx;
+  justify-content: space-between;
+}
+
+.price-main {
+  display: flex;
   align-items: baseline;
-  margin-bottom: 15rpx;
+}
+
+.member-tag {
+  font-size: 24rpx;
+  color: #fff;
+  background: linear-gradient(45deg, #ff6b6b, #f06595, #ff6b6b);
+  background-size: 200% 200%;
+  border-radius: 8rpx;
+  padding: 6rpx 14rpx;
+  margin-right: 12rpx;
+  display: inline-block;
+  font-weight: bold;
+  box-shadow: 0 2rpx 8rpx rgba(255, 107, 107, 0.4);
+  animation: gradientFlow 3s ease infinite;
+  vertical-align: middle;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.price-symbol {
+  font-size: 32rpx;
+  color: #ff4d4f;
+  font-weight: bold;
+  margin-right: 4rpx;
+}
+
+.price-value {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #ff4d4f;
+  line-height: 1;
 }
 
 .original-price {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #999;
   text-decoration: line-through;
-  margin-left: 15rpx;
+  margin-left: 16rpx;
 }
 
 .sales {
-  margin-left: auto;
   font-size: 24rpx;
   color: #999;
+  margin-bottom: 8rpx;
 }
 
 .product-name {

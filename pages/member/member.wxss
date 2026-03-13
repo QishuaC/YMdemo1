@@ -220,6 +220,18 @@
   flex: 1;
 }
 
+.benefit-text-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.benefit-sub {
+  font-size: 22rpx;
+  color: #999;
+}
+
 .benefit-status {
   font-size: 24rpx;
   padding: 8rpx 20rpx;
@@ -304,16 +316,29 @@
   text-align: center;
 }
 
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+
 .vip-card {
   background: linear-gradient(135deg, #ff9600 0%, #ff7a00 100%);
   border-radius: 24rpx;
   padding: 40rpx 30rpx;
-  margin-bottom: 30rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   color: #fff;
-  box-shadow: 0 8rpx 24rpx rgba(255, 150, 0, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(255, 150, 0, 0.2);
+  border: 2rpx solid transparent;
+}
+
+.vip-card.selected {
+  transform: translateY(-4rpx);
+  box-shadow: 0 12rpx 28rpx rgba(255, 150, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .vip-icon {
@@ -350,12 +375,10 @@
 }
 
 .vip-benefits-mini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12rpx;
-  font-size: 26rpx;
-  opacity: 0.95;
+  margin-bottom: 24rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #999;
 }
 
 .join-btn {

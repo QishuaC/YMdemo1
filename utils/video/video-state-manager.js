@@ -5,6 +5,7 @@ class VideoStateManager {
       currentIdx: 0,
       allVideos: [],
       videos: [],
+      visibleVideos: [],
       showCommentPopup: false,
       currentVideoId: '',
       currentCommentCount: 0
@@ -38,6 +39,11 @@ class VideoStateManager {
 
   setAllVideos(videos) {
     this.state.allVideos = videos;
+    return this.state;
+  }
+
+  setVisibleVideos(videos) {
+    this.state.visibleVideos = videos;
     return this.state;
   }
 
@@ -125,6 +131,7 @@ class VideoStateManager {
       currentIdx: 0,
       allVideos: [],
       videos: [],
+      visibleVideos: [],
       showCommentPopup: false,
       currentVideoId: '',
       currentCommentCount: 0

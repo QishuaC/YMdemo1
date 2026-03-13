@@ -1,4 +1,5 @@
 const app = getApp();
+const auth = require('../../utils/auth.js');
 const { mockComments } = require('../../data/mock.js');
 
 function formatTime(timestamp) {
@@ -88,6 +89,10 @@ Component({
 
   methods: {
     getCurrentUserId() {
+      // 优先使用 auth 工具类获取用户ID，保持逻辑一致
+      if (auth && typeof auth.getUserId === 'function') {
+        return String(auth.getUserId());
+      }
       const storedUserId = wx.getStorageSync('userId');
       if (storedUserId) return String(storedUserId);
       const userInfo = wx.getStorageSync('userInfo') || {};
@@ -125,7 +130,7 @@ Component({
               nickname: comment.nickname || '游客',
               avatar: comment.avatar || ''
             };
-            const isCurrentUserMember = isMember && commentUserId._id === userId;
+            const isUserMember = commentUserId.isMember || (isMember && commentUserId._id === userId);
             const canDelete = commentUserId._id === userId;
             
             const replies = comment.replies ? comment.replies.map(reply => {
@@ -135,7 +140,7 @@ Component({
                 nickname: reply.nickname || '游客',
                 avatar: reply.avatar || ''
               };
-              const isReplyUserMember = isMember && replyUserId._id === userId;
+              const isReplyUserMember = replyUserId.isMember || (isMember && replyUserId._id === userId);
               const canDeleteReply = replyUserId._id === userId;
               return {
                 ...reply,
@@ -153,7 +158,7 @@ Component({
               liked,
               replies,
               canDelete,
-              isColorful: isCurrentUserMember,
+              isColorful: isUserMember,
               formattedTime: formatTime(new Date(comment.createdAt).getTime())
             };
           });
@@ -187,7 +192,7 @@ Component({
             nickname: comment.nickname || '游客',
             avatar: comment.avatar || ''
           };
-          const isCurrentUserMember = isMember && commentUserId._id === userId;
+          const isUserMember = commentUserId.isMember || (isMember && commentUserId._id === userId);
           const canDelete = commentUserId._id === userId;
           
           const replies = comment.replies ? comment.replies.map(reply => {
@@ -197,7 +202,7 @@ Component({
               nickname: reply.nickname || '游客',
               avatar: reply.avatar || ''
             };
-            const isReplyUserMember = isMember && replyUserId._id === userId;
+            const isReplyUserMember = replyUserId.isMember || (isMember && replyUserId._id === userId);
             const canDeleteReply = replyUserId._id === userId;
             return {
               ...reply,
@@ -215,7 +220,7 @@ Component({
             liked,
             replies,
             canDelete,
-            isColorful: isCurrentUserMember,
+            isColorful: isUserMember,
             formattedTime: formatTime(comment.createdAt)
           };
         });
@@ -272,12 +277,13 @@ Component({
               nickname: reply.nickname || '游客',
               avatar: reply.avatar || ''
             };
+            const isReplyUserMember = replyUserId.isMember || (isMember && replyUserId._id === userId);
             return {
               ...reply,
               userId: replyUserId,
               liked,
               canDelete: replyUserId._id === userId,
-              isColorful: isMember && replyUserId._id === userId,
+              isColorful: isReplyUserMember,
               formattedTime: formatTime(new Date(reply.createdAt).getTime())
             };
           });
@@ -442,6 +448,11 @@ Component({
           this.triggerEvent('commentadded', {
             count: (this.data.commentCount || 0) + 1
           });
+        } else {
+          wx.showToast({
+            title: res.message || '操作过于频繁，请稍后再试',
+            icon: 'none'
+          });
         }
       } catch (error) {
         console.error('发表评论失败:', error);
@@ -507,6 +518,11 @@ Component({
 
           this.setData({
             comments: updatedComments
+          });
+        } else {
+          wx.showToast({
+            title: res.message || '操作过于频繁，请稍后再试',
+            icon: 'none'
           });
         }
       } catch (error) {

@@ -1,0 +1,30 @@
+<view class="container">
+  <view class="header">
+    <view class="current-points">
+      <text class="points-label">当前积分</text>
+      <text class="points-value">{{currentPoints}}</text>
+    </view>
+  </view>
+
+  <view class="history-list">
+    <view class="history-item" wx:for="{{historyList}}" wx:key="_id">
+      <view class="item-left">
+        <text class="item-icon">{{item.type === 'earn' ? '+' : '-'}}</text>
+        <view class="item-info">
+          <text class="item-desc">{{item.description}}</text>
+          <text class="item-time">{{formatTime(item.createdAt)}}</text>
+        </view>
+      </view>
+      <text class="item-amount {{item.type}}">{{item.type === 'earn' ? '+' : '-'}}{{item.amount}}</text>
+    </view>
+
+    <view class="empty-state" wx:if="{{historyList.length === 0 && !loading}}">
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">暂无积分记录</text>
+    </view>
+
+    <view class="loading-more" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </view>
+</view>

@@ -8,7 +8,7 @@ Component({
         icon: '🏠'
       },
       {
-        pagePath: '/pages/video/video',
+        pagePath: '/packageContent/pages/video/video',
         text: '视频',
         icon: '🎬'
       },

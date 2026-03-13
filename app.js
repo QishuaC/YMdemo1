@@ -9,8 +9,14 @@ App({
     orders: [],
     addresses: [],
     isMember: false,
+    memberPlan: '',
     memberExpiry: '',
-    monthlyGiftClaimed: false,
+    memberBenefits: {
+      badgeDigitalClaimed: false,
+      badgePhysicalEligible: false,
+      genealogyDigitalClaimed: false,
+      genealogyPhysicalEligible: false
+    },
     luckyDrawChances: 0,
     points: 0,
     selectedTab: 0,
@@ -22,12 +28,12 @@ App({
         {
           id: 1,
           image: 'https://picsum.photos/800/300?random=100',
-          targetPage: '/pages/product/product?id=1'
+          targetPage: '/packageShop/pages/product/product?id=1'
         },
         {
           id: 2,
           image: 'https://picsum.photos/800/300?random=101',
-          targetPage: '/pages/product/product?id=3'
+          targetPage: '/packageShop/pages/product/product?id=3'
         }
       ],
       tabBar: [
@@ -61,7 +67,10 @@ App({
     
     if (isLoggedIn) {
       await this.loadAddresses();
+      await this.syncMemberProfile();
+      return;
     }
+    this.resetMemberState(true);
   },
 
   loadUiConfig() {
@@ -160,24 +169,66 @@ App({
   },
 
   loadMemberData() {
+    if (!this.globalData.isLoggedIn) {
+      this.resetMemberState(true);
+      return;
+    }
     const memberData = wx.getStorageSync('memberData');
     if (memberData) {
       this.globalData.isMember = memberData.isMember || false;
+      this.globalData.memberPlan = memberData.memberPlan || '';
       this.globalData.memberExpiry = memberData.memberExpiry || '';
-      this.globalData.monthlyGiftClaimed = memberData.monthlyGiftClaimed || false;
+      this.globalData.memberBenefits = memberData.memberBenefits || this.globalData.memberBenefits;
       this.globalData.luckyDrawChances = memberData.luckyDrawChances || 0;
       this.globalData.points = memberData.points || 0;
+    }
+  },
+
+  resetMemberState(clearStorage = false) {
+    this.globalData.isMember = false;
+    this.globalData.memberPlan = '';
+    this.globalData.memberExpiry = '';
+    this.globalData.memberBenefits = {
+      badgeDigitalClaimed: false,
+      badgePhysicalEligible: false,
+      genealogyDigitalClaimed: false,
+      genealogyPhysicalEligible: false
+    };
+    this.globalData.luckyDrawChances = 0;
+    this.globalData.points = 0;
+    if (clearStorage) {
+      wx.removeStorageSync('memberData');
     }
   },
 
   saveMemberData() {
     wx.setStorageSync('memberData', {
       isMember: this.globalData.isMember,
+      memberPlan: this.globalData.memberPlan,
       memberExpiry: this.globalData.memberExpiry,
-      monthlyGiftClaimed: this.globalData.monthlyGiftClaimed,
+      memberBenefits: this.globalData.memberBenefits,
       luckyDrawChances: this.globalData.luckyDrawChances,
       points: this.globalData.points
     });
+  },
+
+  async syncMemberProfile() {
+    try {
+      const res = await this.request({
+        url: '/api/member/profile',
+        method: 'GET',
+        timeout: 5000
+      });
+      if (res && res.success && res.data) {
+        this.globalData.isMember = Boolean(res.data.isMember);
+        this.globalData.memberPlan = res.data.memberPlan || '';
+        this.globalData.memberExpiry = res.data.memberExpiry || '';
+        this.globalData.memberBenefits = res.data.memberBenefits || this.globalData.memberBenefits;
+        this.saveMemberData();
+      }
+    } catch (err) {
+      console.error('Failed to sync member profile:', err);
+    }
   },
 
   async syncPointsFromServer() {

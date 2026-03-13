@@ -1,74 +1,66 @@
-const app = getApp();
-
+// pages/points-history/points-history.js
 Page({
+
+  /**
+   * 页面的初始数据
+   */
   data: {
-    currentPoints: 0,
-    historyList: [],
-    page: 1,
-    limit: 20,
-    loading: false,
-    hasMore: true
+
   },
 
-  onLoad() {
-    this.loadPointsHistory();
+  /**
+   * 生命周期函数--监听页面加载
+   */
+  onLoad(options) {
+
   },
 
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+
+  },
+
+  /**
+   * 生命周期函数--监听页面显示
+   */
+  onShow() {
+
+  },
+
+  /**
+   * 生命周期函数--监听页面隐藏
+   */
+  onHide() {
+
+  },
+
+  /**
+   * 生命周期函数--监听页面卸载
+   */
+  onUnload() {
+
+  },
+
+  /**
+   * 页面相关事件处理函数--监听用户下拉动作
+   */
   onPullDownRefresh() {
-    this.setData({ page: 1, historyList: [], hasMore: true });
-    this.loadPointsHistory().then(() => {
-      wx.stopPullDownRefresh();
-    });
+
   },
 
+  /**
+   * 页面上拉触底事件的处理函数
+   */
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
-      this.loadPointsHistory();
-    }
+
   },
 
-  loadPointsHistory() {
-    if (this.data.loading) return Promise.resolve();
-    if (!this.data.hasMore) return Promise.resolve();
+  /**
+   * 用户点击右上角分享
+   */
+  onShareAppMessage() {
 
-    this.setData({ loading: true });
-
-    return app.request({
-      url: '/api/points/history',
-      method: 'GET',
-      data: {
-        page: this.data.page,
-        limit: this.data.limit
-      }
-    }).then((res) => {
-      if (res.success) {
-        app.globalData.points = Number(res.data.currentPoints || 0);
-        app.saveMemberData();
-        const newList = this.data.page === 1 
-          ? res.data.list 
-          : [...this.data.historyList, ...res.data.list];
-        
-        this.setData({
-          currentPoints: res.data.currentPoints,
-          historyList: newList,
-          hasMore: newList.length < res.data.total,
-          page: this.data.page + 1
-        });
-      }
-    }).catch(() => {
-      wx.showToast({ title: '加载失败', icon: 'none' });
-    }).finally(() => {
-      this.setData({ loading: false });
-    });
-  },
-
-  formatTime(isoString) {
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
   }
-});
+})

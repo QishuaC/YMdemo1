@@ -6,16 +6,23 @@ Page({
     categories: ['全部', '传统酿造', '手工艺品', '文创周边', '农家特产'],
     currentCategory: 0,
     products: [],
-    allProducts: [],
     banners: [],
     cartCount: 0,
     searchKeyword: '',
-    baseUrl: 'http://localhost:3000'
+    baseUrl: 'http://localhost:3000',
+    isMember: false,
+    pageSize: 8,
+    currentPage: 1,
+    hasMoreProducts: false,
+    isLoadingProducts: true,
+    isLoadingMore: false
   },
 
   onLoad() {
+    this.productCacheKey = 'shop_products_cache_v1';
+    this.searchTimer = null;
     this.loadBanners();
-    this.loadProducts();
+    this.loadProducts({ reset: true, useCache: true });
   },
 
   onShow() {
@@ -25,10 +32,16 @@ Page({
     }
     this.updateCartCount();
     this.setData({
-      searchKeyword: ''
+      isMember: Boolean(app.globalData.isLoggedIn && app.globalData.isMember)
     });
-    this.loadBanners();
-    this.loadProducts();
+    this.refreshPrices();
+  },
+
+  onUnload() {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
   },
 
   loadBanners() {
@@ -43,7 +56,7 @@ Page({
           subtitle: item.subtitle || '',
           btnText: item.btnText || '立即抢购',
           btnColor: item.btnColor || '#ffc107',
-          image: item.image.startsWith('http') ? item.image : this.data.baseUrl + item.image,
+          image: this.resolveAssetUrl(item.image),
           targetPage: item.targetPage || '',
           bgColor: item.bgColor || '#ffffff'
         }));
@@ -56,37 +69,124 @@ Page({
       banners: mockBanners
     });
   },
+  toOneDecimal(value) {
+    const num = Number(value || 0);
+    return Math.round((num + Number.EPSILON) * 10) / 10;
+  },
 
-  loadProducts() {
-    app.request({
-      url: '/api/products'
-    }).then((res) => {
-      if (res.success && Array.isArray(res.products) && res.products.length > 0) {
-        const products = res.products.map((item) => ({
-          id: item._id || item.id,
-          name: item.name,
-          cover: item.cover && item.cover.startsWith('http') ? item.cover : this.data.baseUrl + item.cover,
-          price: item.price,
-          originalPrice: item.originalPrice,
-          sales: item.sales || 0,
-          category: item.category || '默认分类',
-          stock: item.stock || 0,
-          serviceTags: Array.isArray(item.serviceTags) ? item.serviceTags : []
-        }));
+  getDisplayPrice(rawPrice) {
+    const price = Number(rawPrice || 0);
+    if (this.data.isMember) {
+      return Math.max(0, this.toOneDecimal(price * 0.95));
+    }
+    return this.toOneDecimal(price);
+  },
+
+  resolveAssetUrl(path) {
+    if (!path) return '';
+    return path.startsWith('http') ? path : this.data.baseUrl + path;
+  },
+
+  mapProduct(item) {
+    return {
+      id: item._id || item.id,
+      name: item.name,
+      cover: this.resolveAssetUrl(item.cover),
+      basePrice: this.toOneDecimal(item.price),
+      originalBasePrice: this.toOneDecimal(item.originalPrice || item.price),
+      price: this.getDisplayPrice(item.price),
+      originalPrice: this.data.isMember ? this.toOneDecimal(item.price) : this.toOneDecimal(item.originalPrice || item.price),
+      showMemberPrice: this.data.isMember,
+      sales: item.sales || 0,
+      category: item.category || '默认分类',
+      stock: item.stock || 0,
+      serviceTags: Array.isArray(item.serviceTags) ? item.serviceTags : []
+    };
+  },
+
+  getCurrentCategoryName(categoryIndex = this.data.currentCategory) {
+    return this.data.categories[categoryIndex] || '全部';
+  },
+
+  buildProductQuery(page) {
+    const query = {
+      page,
+      limit: this.data.pageSize
+    };
+    const keyword = String(this.data.searchKeyword || '').trim();
+    const categoryName = this.getCurrentCategoryName();
+    if (keyword) {
+      query.keyword = keyword;
+    }
+    if (categoryName !== '全部') {
+      query.category = categoryName;
+    }
+    return query;
+  },
+
+  loadProducts({ reset = false, useCache = false } = {}) {
+    if (reset && useCache) {
+      const cachedProducts = wx.getStorageSync(this.productCacheKey);
+      if (Array.isArray(cachedProducts) && cachedProducts.length > 0) {
         this.setData({
-          allProducts: products,
-          products
-        });
-      } else {
-        this.setData({
-          allProducts: mockProducts,
-          products: mockProducts
+          products: cachedProducts,
+          isLoadingProducts: false
         });
       }
-    }).catch(() => {
+    }
+    if (reset) {
       this.setData({
-        allProducts: mockProducts,
-        products: mockProducts
+        isLoadingProducts: true,
+        isLoadingMore: false
+      });
+    } else {
+      if (!this.data.hasMoreProducts || this.data.isLoadingMore) return;
+      this.setData({ isLoadingMore: true });
+    }
+    const nextPage = reset ? 1 : this.data.currentPage + 1;
+    app.request({
+      url: '/api/products',
+      data: this.buildProductQuery(nextPage)
+    }).then((res) => {
+      if (!res.success || !Array.isArray(res.products)) {
+        throw new Error('invalid products response');
+      }
+      const incoming = res.products.map((item) => this.mapProduct(item));
+      const products = reset ? incoming : this.data.products.concat(incoming);
+      const total = Number(res.total || 0);
+      const hasMoreProducts = total > 0 ? products.length < total : incoming.length >= this.data.pageSize;
+      if (reset && !this.data.searchKeyword && this.getCurrentCategoryName() === '全部') {
+        wx.setStorageSync(this.productCacheKey, products);
+      }
+      this.setData({
+        products,
+        currentPage: Number(res.page || nextPage),
+        hasMoreProducts,
+        isLoadingProducts: false,
+        isLoadingMore: false
+      });
+    }).catch(() => {
+      if (!reset) {
+        this.setData({ isLoadingMore: false });
+        return;
+      }
+      const keyword = String(this.data.searchKeyword || '').trim().toLowerCase();
+      const categoryName = this.getCurrentCategoryName();
+      const fallbackList = mockProducts
+        .map((item) => this.mapProduct(item))
+        .filter((item) => {
+          const byCategory = categoryName === '全部' || item.category === categoryName;
+          if (!byCategory) return false;
+          if (!keyword) return true;
+          return item.name.toLowerCase().includes(keyword) || String(item.category || '').toLowerCase().includes(keyword);
+        });
+      const firstPage = fallbackList.slice(0, this.data.pageSize);
+      this.setData({
+        products: firstPage,
+        currentPage: 1,
+        hasMoreProducts: fallbackList.length > firstPage.length,
+        isLoadingProducts: false,
+        isLoadingMore: false
       });
     });
   },
@@ -105,13 +205,13 @@ Page({
     }
     if (banner.productId) {
       wx.navigateTo({
-        url: '/pages/product/product?id=' + banner.productId
+        url: '/packageShop/pages/product/product?id=' + banner.productId
       });
     }
   },
 
   onSearchTap() {
-    console.log('搜索框被点击');
+    return;
   },
 
   onSearchInput(e) {
@@ -119,7 +219,12 @@ Page({
     this.setData({
       searchKeyword: keyword
     });
-    this.filterProducts(keyword, this.data.currentCategory);
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => {
+      this.loadProducts({ reset: true });
+    }, 250);
   },
 
   onSearchConfirm(e) {
@@ -127,37 +232,28 @@ Page({
     this.setData({
       searchKeyword: keyword
     });
-    this.filterProducts(keyword, this.data.currentCategory);
-    
-    setTimeout(() => {
-      this.setData({
-        searchKeyword: ''
-      });
-      this.filterProducts('', this.data.currentCategory);
-    }, 2000);
+    this.loadProducts({ reset: true });
   },
 
-  filterProducts(keyword, categoryIndex) {
-    let filteredProducts = this.data.allProducts;
-    const categoryName = this.data.categories[categoryIndex];
+  onReachBottom() {
+    this.loadProducts();
+  },
 
-    if (categoryName !== '全部') {
-      filteredProducts = filteredProducts.filter(product => {
-        return product.category === categoryName;
-      });
-    }
-
-    if (keyword && keyword.trim()) {
-      const searchKey = keyword.trim().toLowerCase();
-      filteredProducts = filteredProducts.filter(product => {
-        return product.name.toLowerCase().includes(searchKey) ||
-               (product.category && product.category.toLowerCase().includes(searchKey));
-      });
-    }
-
-    this.setData({
-      products: filteredProducts
+  refreshPrices() {
+    if (!Array.isArray(this.data.products) || this.data.products.length === 0) return;
+    const refreshed = this.data.products.map((item) => {
+      const basePrice = this.toOneDecimal(item.basePrice || item.price || 0);
+      const originalBasePrice = this.toOneDecimal(item.originalBasePrice || item.originalPrice || basePrice);
+      return {
+        ...item,
+        basePrice,
+        originalBasePrice,
+        price: this.getDisplayPrice(basePrice),
+        originalPrice: this.data.isMember ? basePrice : originalBasePrice,
+        showMemberPrice: this.data.isMember
+      };
     });
+    this.setData({ products: refreshed });
   },
 
   updateCartCount() {
@@ -174,19 +270,19 @@ Page({
       currentCategory: index,
       searchKeyword: ''
     });
-    this.filterProducts('', index);
+    this.loadProducts({ reset: true });
   },
 
   goToCart() {
     wx.navigateTo({
-      url: '/pages/cart/cart'
+      url: '/packageShop/pages/cart/cart'
     });
   },
 
   viewProduct(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
-      url: '/pages/product/product?id=' + id
+      url: '/packageShop/pages/product/product?id=' + id
     });
   },
 
@@ -204,7 +300,7 @@ Page({
     app.addToCart({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: Number(product.basePrice || product.price || 0),
       cover: product.cover
     });
     this.updateCartCount();

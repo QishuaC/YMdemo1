@@ -1,0 +1,87 @@
+<view class="video-container">
+  <view class="top-tabs">
+    <view class="tab-btn {{activeTab === 'recommend' ? 'active' : ''}}" catchtap="doSwitchTab" data-type="recommend">
+      推荐
+    </view>
+    <view class="tab-btn {{activeTab === 'hot' ? 'active' : ''}}" catchtap="doSwitchTab" data-type="hot">
+      最热
+    </view>
+    <view class="tab-btn {{activeTab === 'new' ? 'active' : ''}}" catchtap="doSwitchTab" data-type="new">
+      最新
+    </view>
+    <view class="tab-btn {{activeTab === 'liked' ? 'active' : ''}}" catchtap="doSwitchTab" data-type="liked">
+      喜欢
+    </view>
+  </view>
+
+  <swiper class="video-swiper" vertical circular current="{{currentIdx}}" bindchange="onSwiperChange">
+    <swiper-item wx:for="{{videos}}" wx:key="id">
+      <view class="single-video">
+        <video 
+          wx:if="{{Math.abs(index - currentIdx) <= 1}}"
+          class="video-player" 
+          src="{{item.videoUrl}}" 
+          poster="{{item.cover}}"
+          id="video-{{index}}"
+          data-idx="{{index}}"
+          loop
+          muted="{{false}}"
+          show-center-play-btn="{{false}}"
+          show-play-btn="{{false}}"
+          controls="{{false}}"
+          object-fit="cover"
+          play-btn-position="bottomRight"
+          binderror="onVideoError"
+        ></video>
+        
+        <view class="video-mask" catchtap="doPlay" data-idx="{{index}}"></view>
+        
+        <view class="video-info">
+          <view class="left-part">
+            <view class="author-line">
+              <image class="author-avatar" src="{{item.avatar}}"></image>
+              <text class="author-name">{{item.author}}</text>
+              <button class="follow-btn">+ 关注</button>
+            </view>
+            <view class="video-text">{{item.title}}</view>
+          </view>
+        </view>
+          
+        <view class="right-part">
+          <view class="action-btn" catchtap="doLike" data-idx="{{index}}">
+            <text class="icon">{{item.liked ? '❤️' : '🤍'}}</text>
+            <text class="count">{{item.likes}}</text>
+          </view>
+          <view class="action-btn" catchtap="doComment" data-idx="{{index}}">
+            <text class="icon">💬</text>
+            <text class="count">{{item.comments}}</text>
+          </view>
+          <view class="action-btn">
+            <image class="music-avatar" src="{{item.avatar}}"></image>
+          </view>
+        </view>
+        
+        <view class="share-btn-container" catchtap="doShare" data-idx="{{index}}">
+          <view class="share-btn-top">
+            <text class="share-icon">📤</text>
+            <text class="share-text">分享</text>
+          </view>
+        </view>
+        
+        <view class="play-center" catchtap="doPlay" data-idx="{{index}}">
+          <text class="play-icon" wx:if="{{!item.playing}}">▶</text>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <comment-popup 
+    show="{{showCommentPopup}}" 
+    video-id="{{currentVideoId}}"
+    comment-count="{{currentCommentCount}}"
+    is-member="{{isMember}}"
+    bind:close="onCommentClose"
+    bind:commentadded="onCommentAdded"
+    bind:commentcountupdate="onCommentCountUpdate"
+  ></comment-popup>
+</view>

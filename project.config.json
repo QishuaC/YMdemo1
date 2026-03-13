@@ -4,15 +4,31 @@
     "ignore": [
       {
         "type": "folder",
-        "value": "backend/data"
+        "value": "backend"
       },
       {
         "type": "folder",
-        "value": "backend/uploads"
+        "value": "outputs"
       },
       {
         "type": "folder",
         "value": ".runtime-data"
+      },
+      {
+        "type": "file",
+        "value": "code-reviewer.js"
+      },
+      {
+        "type": "file",
+        "value": "continuous-reviewer.js"
+      },
+      {
+        "type": "file",
+        "value": "*.md"
+      },
+      {
+        "type": "glob",
+        "value": ".*"
       }
     ],
     "include": []

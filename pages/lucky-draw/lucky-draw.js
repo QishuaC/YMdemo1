@@ -1,108 +1,66 @@
-const app = getApp();
-
+// pages/lucky-draw/lucky-draw.js
 Page({
+
+  /**
+   * 页面的初始数据
+   */
   data: {
-    luckyDrawChances: 0,
-    isDrawing: false,
-    showResult: false,
-    currentPrize: null,
-    drawHistory: [],
-    prizes: [
-      { name: '100积分', icon: '💰', type: 'points', value: 100 },
-      { name: '200积分', icon: '💎', type: 'points', value: 200 },
-      { name: '10元优惠券', icon: '🎫', type: 'coupon', value: 10 },
-      { name: '专属礼品', icon: '🎁', type: 'gift', value: 0 },
-      { name: '谢谢参与', icon: '😊', type: 'thankyou', value: 0 }
-    ]
+
   },
 
-  onLoad() {
-    this.loadData();
+  /**
+   * 生命周期函数--监听页面加载
+   */
+  onLoad(options) {
+
   },
 
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+
+  },
+
+  /**
+   * 生命周期函数--监听页面显示
+   */
   onShow() {
-    this.loadData();
+
   },
 
-  loadData() {
-    this.setData({
-      luckyDrawChances: app.globalData.luckyDrawChances || 0
-    });
-    this.loadDrawHistory();
+  /**
+   * 生命周期函数--监听页面隐藏
+   */
+  onHide() {
+
   },
 
-  loadDrawHistory() {
-    const history = wx.getStorageSync('drawHistory') || [];
-    this.setData({
-      drawHistory: history.slice(0, 10)
-    });
+  /**
+   * 生命周期函数--监听页面卸载
+   */
+  onUnload() {
+
   },
 
-  doDraw() {
-    if (this.data.isDrawing) return;
-    
-    if (this.data.luckyDrawChances <= 0) {
-      wx.showToast({
-        title: '抽奖机会不足',
-        icon: 'none'
-      });
-      return;
-    }
+  /**
+   * 页面相关事件处理函数--监听用户下拉动作
+   */
+  onPullDownRefresh() {
 
-    this.setData({
-      isDrawing: true
-    });
-
-    const random = Math.random();
-    let selectedPrize;
-    
-    if (random < 0.3) {
-      selectedPrize = this.data.prizes[0];
-    } else if (random < 0.5) {
-      selectedPrize = this.data.prizes[1];
-    } else if (random < 0.7) {
-      selectedPrize = this.data.prizes[2];
-    } else if (random < 0.8) {
-      selectedPrize = this.data.prizes[3];
-    } else {
-      selectedPrize = this.data.prizes[4];
-    }
-
-    setTimeout(() => {
-      app.globalData.luckyDrawChances -= 1;
-      
-      if (selectedPrize.type === 'points') {
-        app.globalData.points = (app.globalData.points || 0) + selectedPrize.value;
-      }
-      
-      app.saveMemberData();
-      
-      const history = wx.getStorageSync('drawHistory') || [];
-      history.unshift({
-        prize: selectedPrize.name,
-        icon: selectedPrize.icon,
-        time: new Date().toLocaleString('zh-CN')
-      });
-      wx.setStorageSync('drawHistory', history.slice(0, 20));
-
-      this.setData({
-        isDrawing: false,
-        showResult: true,
-        currentPrize: selectedPrize,
-        luckyDrawChances: app.globalData.luckyDrawChances,
-        drawHistory: history.slice(0, 10)
-      });
-    }, 2000);
   },
 
-  closeResult() {
-    this.setData({
-      showResult: false,
-      currentPrize: null
-    });
+  /**
+   * 页面上拉触底事件的处理函数
+   */
+  onReachBottom() {
+
   },
 
-  goBack() {
-    wx.navigateBack();
+  /**
+   * 用户点击右上角分享
+   */
+  onShareAppMessage() {
+
   }
 })

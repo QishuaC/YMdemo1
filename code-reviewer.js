@@ -130,7 +130,7 @@ class CodeReviewer {
         this.log('WARN', '空的catch块，错误被吞没', { file: `${pageName}.js` });
       }
       
-      if (content.includes('.catch(err => {}') || content.includes('.catch(error => {}')) {
+      if (content.includes('.catch(err => {})') || content.includes('.catch(error => {})')) {
         this.log('WARN', '空的catch块，错误被吞没', { file: `${pageName}.js` });
       }
       

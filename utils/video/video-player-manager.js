@@ -67,17 +67,9 @@ class VideoPlayerManager {
     }
   }
 
-  pauseAll(videoCount) {
-    for (let i = 0; i < videoCount; i++) {
-      this.pause(i);
-      const directCtx = wx.createVideoContext(`video-${i}`, this.pageContext);
-      if (directCtx) {
-        try {
-          directCtx.pause();
-        } catch (error) {
-          console.error('Direct pause error:', error);
-        }
-      }
+  pauseAll(currentIndex) {
+    if (currentIndex !== undefined && currentIndex !== null) {
+      this.pause(currentIndex);
     }
   }
 

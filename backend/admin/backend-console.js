@@ -8,6 +8,7 @@ const state = {
     products: [],
     orders: [],
     users: [],
+    members: [],
     comments: [],
     exchangeProducts: [],
     securityAnomalies: []
@@ -18,6 +19,7 @@ const state = {
     articles: 20,
     orders: 20,
     users: 20,
+    members: 20,
     points: 20,
     'exchange-products': 20
   },
@@ -190,6 +192,16 @@ const moduleConfig = {
       { name: 'addressDetail', label: '详细地址', type: 'textarea', required: false }
     ]
   },
+  members: {
+    title: '会员',
+    listApi: '/api/members',
+    detailApi: null,
+    detailKey: null,
+    createApi: null,
+    updateApi: null,
+    deleteApi: null,
+    fields: []
+  },
   'exchange-products': {
     title: '积分兑换商品',
     listApi: '/api/exchange-products',
@@ -270,11 +282,36 @@ async function request(url, options = {}) {
       }
     }
     if (isSecurityApiUnavailableMessage(message)) {
-      throw new Error('当前后端未部署安全策略接口，请重启后端服务');
+      const securityError = new Error('当前后端未部署安全策略接口，请重启后端服务');
+      securityError.status = res.status;
+      securityError.url = url;
+      throw securityError;
     }
-    throw new Error(message);
+    const requestError = new Error(message);
+    requestError.status = res.status;
+    requestError.url = url;
+    throw requestError;
   }
   return await res.json();
+}
+
+function isMissingMembersApiMessage(message) {
+  if (!message) return false;
+  const text = String(message).toLowerCase();
+  return text.includes('cannot get /api/members');
+}
+
+function getMemberStatusFromUser(user) {
+  const now = Date.now();
+  const expiry = user.memberExpiry ? new Date(user.memberExpiry).getTime() : 0;
+  const active = Boolean(user.isMember) && expiry > now;
+  return {
+    ...user,
+    isMember: active,
+    memberPlan: active ? user.memberPlan || '' : '',
+    memberExpiry: active ? user.memberExpiry || '' : '',
+    memberStartedAt: active ? user.memberStartedAt || '' : ''
+  };
 }
 
 async function parseErrorMessage(res, fallback) {
@@ -325,6 +362,7 @@ function renderTable(moduleName) {
     products: 'productsTable',
     orders: 'ordersTable',
     users: 'usersTable',
+    members: 'membersTable',
     comments: 'commentsTable',
     'exchange-products': 'exchangeProductsTable'
   };
@@ -541,6 +579,49 @@ function rowTemplate(moduleName, row) {
       </tr>
     `;
   }
+  if (moduleName === 'members') {
+    const statusText = row.isMember ? '有效' : '未开通';
+    const statusColor = row.isMember ? '#07c160' : '#999';
+    const planText = row.memberPlan === 'yearly' ? '年卡' : (row.memberPlan === 'monthly' ? '月卡' : '-');
+    const benefits = [];
+    if (row.memberBenefits?.badgeDigitalClaimed) benefits.push('编号徽章');
+    if (row.memberBenefits?.genealogyDigitalClaimed) benefits.push('电子通谱');
+    const actions = row.isMember
+      ? `
+          <div class="cell-actions">
+            <button class="btn" data-action="activate-member" data-user-id="${row._id}" data-plan-type="monthly">续月卡</button>
+            <button class="btn" data-action="activate-member" data-user-id="${row._id}" data-plan-type="yearly">续年卡</button>
+            <button class="btn danger" data-action="deactivate-member" data-user-id="${row._id}">取消会员</button>
+          </div>
+        `
+      : `
+          <div class="cell-actions">
+            <button class="btn" data-action="activate-member" data-user-id="${row._id}" data-plan-type="monthly">开通月卡</button>
+            <button class="btn primary" data-action="activate-member" data-user-id="${row._id}" data-plan-type="yearly">开通年卡</button>
+          </div>
+        `;
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            ${row.avatar ? `<img class="thumb" src="${row.avatar}" alt="avatar">` : ''}
+            <div>
+              <div>${row.nickname || '-'}</div>
+              <div style="font-size: 12px; color: #999;">${row.uniqueId || '-'}</div>
+            </div>
+          </div>
+        </td>
+        <td>${row.userNumber || '-'}</td>
+        <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+        <td>${planText}</td>
+        <td>${formatDate(row.memberStartedAt)}</td>
+        <td>${formatDate(row.memberExpiry)}</td>
+        <td>${row.isMember ? '95折' : '-'}</td>
+        <td>${benefits.length ? benefits.join('、') : '-'}</td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  }
   return '';
 }
 
@@ -586,13 +667,27 @@ async function fetchModule(moduleName) {
     url += (url.includes('?') ? '&' : '?') + queryString;
   }
   
-  const data = await request(url);
+  let data;
+  try {
+    data = await request(url);
+  } catch (error) {
+    if (moduleName === 'members' && (isMissingMembersApiMessage(error.message) || (error.status === 404 && String(error.url || '').includes('/api/members')))) {
+      const usersData = await request(`/api/users?${queryString}`);
+      data = {
+        ...usersData,
+        members: (usersData.users || []).map((item) => getMemberStatusFromUser(item))
+      };
+    } else {
+      throw error;
+    }
+  }
   const payloadMap = {
     videos: data.videos || [],
     articles: data.articles || [],
     products: data.products || [],
     orders: data.orders || [],
     users: data.users || [],
+    members: data.members || [],
     comments: data.comments || [],
     'exchange-products': data.exchangeProducts || []
   };
@@ -611,6 +706,7 @@ async function refreshAll() {
     fetchModule('products'),
     fetchModule('orders'),
     fetchModule('users'),
+    fetchModule('members'),
     fetchModule('comments'),
     fetchModule('exchange-products'),
     fetchPointsUsers(),
@@ -622,6 +718,7 @@ async function refreshAll() {
   loadedModules.add('products');
   loadedModules.add('orders');
   loadedModules.add('users');
+  loadedModules.add('members');
   loadedModules.add('comments');
   loadedModules.add('exchange-products');
   loadedModules.add('points');
@@ -1636,26 +1733,39 @@ async function saveSecurityPolicy() {
   if (res && res.success) {
     state.securityPolicy = res.policy;
     renderSecurityPolicy();
+  } else {
+    throw new Error((res && res.message) || '保存失败');
   }
 }
 
 function bindUiEvents() {
-  byId('saveUiConfigBtn').addEventListener('click', async () => {
-    try {
-      await saveUiConfig();
-    } catch (e) {
-      alert(e.message || '保存失败');
-    }
-  });
+  const saveUiConfigBtn = byId('saveUiConfigBtn');
+  if (saveUiConfigBtn) {
+    saveUiConfigBtn.addEventListener('click', async () => {
+      try {
+        await saveUiConfig();
+      } catch (e) {
+        alert(e.message || '保存失败');
+      }
+    });
+  } else {
+    console.warn('UI Config save button not found');
+  }
 
   const setupFileUpload = (fileInputId, textInputId, previewId, uploadApi = '/api/upload') => {
-    byId(fileInputId).addEventListener('change', async (e) => {
+    const fileInput = byId(fileInputId);
+    if (!fileInput) {
+      console.warn(`File input not found: ${fileInputId}`);
+      return;
+    }
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       try {
         const data = await uploadFile(file, uploadApi);
         const url = data.url;
-        byId(textInputId).value = url;
+        const textInput = byId(textInputId);
+        if (textInput) textInput.value = url;
         const preview = byId(previewId);
         if (preview) {
           preview.src = url;
@@ -1688,17 +1798,37 @@ function updateCommentVideoFilterOptions() {
 }
 
 function bindEvents() {
-  bindUiEvents();
+  console.log('Starting bindEvents...');
+  try {
+    bindUiEvents();
+    console.log('bindUiEvents completed');
+  } catch (e) {
+    console.error('bindUiEvents failed', e);
+  }
 
   const saveSecurityPolicyBtn = byId('saveSecurityPolicyBtn');
+  console.log('Found saveSecurityPolicyBtn:', !!saveSecurityPolicyBtn);
+  
   if (saveSecurityPolicyBtn) {
     saveSecurityPolicyBtn.addEventListener('click', async () => {
+      console.log('保存策略按钮被点击');
+      const originalText = saveSecurityPolicyBtn.textContent;
       try {
+        saveSecurityPolicyBtn.disabled = true;
+        saveSecurityPolicyBtn.textContent = '保存中...';
         await saveSecurityPolicy();
         await fetchSecurityAnomalies();
         alert('安全策略已保存');
       } catch (error) {
+        console.error('保存策略失败', error);
         alert(error.message || '保存安全策略失败');
+      } finally {
+        saveSecurityPolicyBtn.disabled = false;
+        saveSecurityPolicyBtn.textContent = originalText;
+        if (state.securityPolicyUnsupported) {
+          saveSecurityPolicyBtn.disabled = true;
+          saveSecurityPolicyBtn.title = '当前后端未部署安全策略接口，无法保存';
+        }
       }
     });
   }
@@ -1796,6 +1926,15 @@ function bindEvents() {
       state.limits.users = parseInt(event.target.value, 10);
       loadedModules.delete('users');
       await ensureModuleData('users', true);
+    });
+  }
+
+  const membersLimitSelect = byId('membersLimitSelect');
+  if (membersLimitSelect) {
+    membersLimitSelect.addEventListener('change', async (event) => {
+      state.limits.members = parseInt(event.target.value, 10);
+      loadedModules.delete('members');
+      await ensureModuleData('members', true);
     });
   }
   
@@ -2056,6 +2195,25 @@ function bindEvents() {
       openPointsAdjustModal(userId, userName, currentPoints);
       return;
     }
+    if (action === 'activate-member') {
+      const userId = target.dataset.userId;
+      const planType = target.dataset.planType;
+      try {
+        await activateMember(userId, planType);
+      } catch (error) {
+        alert(error.message || '会员开通失败');
+      }
+      return;
+    }
+    if (action === 'deactivate-member') {
+      const userId = target.dataset.userId;
+      try {
+        await deactivateMember(userId);
+      } catch (error) {
+        alert(error.message || '取消会员失败');
+      }
+      return;
+    }
     
     if (action === 'view-consume-history') {
       const userId = target.dataset.userId;
@@ -2089,6 +2247,21 @@ function bindEvents() {
       const userName = target.dataset.userName;
       const currentPoints = target.dataset.currentPoints;
       openPointsAdjustModal(userId, userName, currentPoints);
+      return;
+    }
+    if (action === 'refund') {
+      if (!confirm('确定要退款吗？')) return;
+      try {
+        const response = await request(`/api/orders/${id}/refund`, { method: 'POST' });
+        if (response.success) {
+          alert('退款成功');
+          await fetchModule('orders');
+        } else {
+          alert(response.message || '退款失败');
+        }
+      } catch (error) {
+        alert(error.message || '退款失败');
+      }
       return;
     }
   });
@@ -2287,6 +2460,34 @@ async function fetchPointsUsers() {
     state.rows.points = data.users || [];
     renderPointsTable();
   }
+}
+
+async function activateMember(userId, planType) {
+  if (!userId) {
+    throw new Error('用户ID无效');
+  }
+  const type = planType === 'yearly' ? 'yearly' : 'monthly';
+  await request(`/api/members/${userId}/activate`, {
+    method: 'POST',
+    body: JSON.stringify({ planType: type })
+  });
+  await ensureModuleData('members', true);
+  await ensureModuleData('users', true);
+  alert(type === 'yearly' ? '已开通年卡会员' : '已开通月卡会员');
+}
+
+async function deactivateMember(userId) {
+  if (!userId) {
+    throw new Error('用户ID无效');
+  }
+  const ok = window.confirm('确认取消该用户会员资格？');
+  if (!ok) return;
+  await request(`/api/members/${userId}/deactivate`, {
+    method: 'POST'
+  });
+  await ensureModuleData('members', true);
+  await ensureModuleData('users', true);
+  alert('已取消会员资格');
 }
 
 function renderPointsTable() {

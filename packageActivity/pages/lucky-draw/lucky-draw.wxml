@@ -1,0 +1,60 @@
+<view class="container">
+  <view class="header">
+    <view class="back-btn" bindtap="goBack">
+      <text class="back-icon">←</text>
+    </view>
+    <text class="header-title">会员抽奖</text>
+  </view>
+
+  <view class="chances-info">
+    <text class="chances-label">剩余抽奖次数：</text>
+    <text class="chances-value">{{luckyDrawChances}}</text>
+    <text class="chances-unit">次</text>
+  </view>
+
+  <view class="draw-section">
+    <view class="prize-display">
+      <view class="prize-wheel {{isDrawing ? 'spinning' : ''}}">
+        <view class="wheel-center">
+          <text class="wheel-icon">🎰</text>
+        </view>
+      </view>
+    </view>
+    
+    <button class="draw-btn {{isDrawing || luckyDrawChances <= 0 ? 'disabled' : ''}}" 
+            bindtap="doDraw" 
+            disabled="{{isDrawing || luckyDrawChances <= 0}}">
+      {{isDrawing ? '抽奖中...' : '立即抽奖'}}
+    </button>
+  </view>
+
+  <view class="prizes-list">
+    <view class="prizes-title">奖品池</view>
+    <view class="prizes-grid">
+      <view class="prize-item" wx:for="{{prizes}}" wx:key="name">
+        <text class="prize-item-icon">{{item.icon}}</text>
+        <text class="prize-item-name">{{item.name}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="history-section" wx:if="{{drawHistory.length > 0}}">
+    <view class="history-title">抽奖记录</view>
+    <view class="history-list">
+      <view class="history-item" wx:for="{{drawHistory}}" wx:key="time">
+        <text class="history-icon">{{item.icon}}</text>
+        <text class="history-prize">{{item.prize}}</text>
+        <text class="history-time">{{item.time}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-modal" wx:if="{{showResult}}">
+    <view class="modal-content">
+      <view class="result-icon">{{currentPrize.icon}}</view>
+      <view class="result-title">恭喜获得</view>
+      <view class="result-prize">{{currentPrize.name}}</view>
+      <button class="result-btn" bindtap="closeResult">确定</button>
+    </view>
+  </view>
+</view>

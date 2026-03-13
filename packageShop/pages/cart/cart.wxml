@@ -1,0 +1,42 @@
+<view class="container">
+  <view class="cart-list" wx:if="{{cartList.length > 0}}">
+    <view class="cart-item card" wx:for="{{cartList}}" wx:key="id">
+      <view class="item-checkbox" bindtap="toggleSelect" data-index="{{index}}">
+        <text class="checkbox {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</text>
+      </view>
+      <image class="item-cover" src="{{item.cover}}" mode="aspectFill"></image>
+      <view class="item-info">
+        <text class="item-name">{{item.name}}</text>
+        <view class="item-bottom">
+          <text class="price">¥{{item.price}}</text>
+          <view class="quantity-control">
+            <text class="btn-minus" bindtap="changeQuantity" data-index="{{index}}" data-type="-">-</text>
+            <text class="quantity">{{item.quantity}}</text>
+            <text class="btn-plus" bindtap="changeQuantity" data-index="{{index}}" data-type="+">+</text>
+          </view>
+        </view>
+      </view>
+      <view class="item-delete" bindtap="deleteItem" data-index="{{index}}">🗑️</view>
+    </view>
+  </view>
+
+  <view class="empty-cart" wx:else>
+    <text class="empty-icon">🛒</text>
+    <text class="empty-text">购物车空空如也</text>
+    <button class="go-shop-btn" bindtap="goToShop">去逛逛</button>
+  </view>
+
+  <view class="cart-footer" wx:if="{{cartList.length > 0}}">
+    <view class="select-all" bindtap="toggleSelectAll">
+      <text class="checkbox {{allSelected ? 'checked' : ''}}">{{allSelected ? '✓' : ''}}</text>
+      <text class="select-text">全选</text>
+    </view>
+    <view class="total-section">
+      <text class="total-label">实付：</text>
+      <text class="total-price">¥{{totalPrice}}</text>
+      <text class="total-origin" wx:if="{{isMember}}">原价¥{{originalTotalPrice}}</text>
+      <text class="total-discount" wx:if="{{isMember}}">会员立减¥{{discountAmount}}</text>
+    </view>
+    <button class="checkout-btn" bindtap="goToCheckout">结算({{selectedCount}})</button>
+  </view>
+</view>

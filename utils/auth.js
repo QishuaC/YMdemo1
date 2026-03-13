@@ -43,6 +43,7 @@ const auth = {
 
   removeUserInfo() {
     wx.removeStorageSync(USER_INFO_KEY);
+    wx.removeStorageSync('userId');
   },
 
   updateUserInfo(userInfo) {
@@ -54,8 +55,11 @@ const auth = {
   },
 
   getUserId() {
+    if (!this.isLoggedIn()) {
+      return '';
+    }
     const userInfo = this.getUserInfo();
-    return userInfo ? (userInfo._id || userInfo.openId || 'wx_user_001') : 'wx_user_001';
+    return userInfo ? (userInfo._id || userInfo.openId || '') : '';
   },
 
   getUsersDb() {

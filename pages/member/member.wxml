@@ -13,8 +13,8 @@
           </view>
         </view>
         <view class="member-level" wx:if="{{isMember && isLoggedIn}}">
-          <text class="level-icon">{{memberLevel.icon}}</text>
-          <text class="level-name">{{memberLevel.name}}</text>
+          <text class="level-icon">👑</text>
+          <text class="level-name">{{memberPlan === 'yearly' ? '义门年卡会员' : '义门月卡会员'}}</text>
         </view>
         <text class="login-tip" wx:if="{{!isLoggedIn}}">登录后享受更多权益</text>
       </view>
@@ -45,20 +45,36 @@
     <view class="benefits-title">会员权益</view>
     <view class="benefits-list">
       <view class="benefit-item">
-        <text class="benefit-icon">💎</text>
-        <text class="benefit-text">商品95折优惠</text>
+        <text class="benefit-icon">🌈</text>
+        <text class="benefit-text">专属炫彩昵称</text>
       </view>
-      <view class="benefit-item" bindtap="claimGift">
-        <text class="benefit-icon">🎁</text>
-        <text class="benefit-text">每月专属礼品</text>
-        <text class="benefit-status {{monthlyGiftClaimed ? 'claimed' : 'claimable'}}">
-          {{monthlyGiftClaimed ? '已领取' : '立即领取'}}
+      <view class="benefit-item" bindtap="claimBenefit" data-type="badge">
+        <text class="benefit-icon">🏅</text>
+        <view class="benefit-text-wrap">
+          <text class="benefit-text">领取专属义门编号徽章</text>
+          <text class="benefit-sub">年卡额外赠送实体编号徽章</text>
+        </view>
+        <text class="benefit-status {{memberBenefits.badgeDigitalClaimed ? 'claimed' : 'claimable'}}">
+          {{memberBenefits.badgeDigitalClaimed ? '已领取' : '立即领取'}}
         </text>
       </view>
-      <view class="benefit-item" bindtap="goToDraw">
-        <text class="benefit-icon">🎰</text>
-        <text class="benefit-text">会员抽奖</text>
-        <text class="benefit-chances">{{luckyDrawChances}}次机会</text>
+      <view class="benefit-item" bindtap="claimBenefit" data-type="genealogy">
+        <text class="benefit-icon">📘</text>
+        <view class="benefit-text-wrap">
+          <text class="benefit-text">领取陈氏通谱电子版</text>
+          <text class="benefit-sub">年卡额外获赠实体版通谱</text>
+        </view>
+        <text class="benefit-status {{memberBenefits.genealogyDigitalClaimed ? 'claimed' : 'claimable'}}">
+          {{memberBenefits.genealogyDigitalClaimed ? '已领取' : '立即领取'}}
+        </text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-icon">✅</text>
+        <text class="benefit-text">每日签到双倍积分</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-icon">💎</text>
+        <text class="benefit-text">所有商品95折</text>
       </view>
     </view>
     <view class="expiry-info">
@@ -76,15 +92,29 @@
   </view>
 
   <view class="level-section card" wx:if="{{!isMember && isLoggedIn}}">
-    <view class="level-title">成为VIP会员</view>
-    <view class="vip-card">
-      <text class="vip-icon">{{memberLevel.icon}}</text>
-      <text class="vip-name">{{memberLevel.name}}</text>
-      <view class="vip-price">
-        <text class="price-symbol">¥</text>
-        <text class="price-value">{{memberLevel.price}}</text>
-        <text class="price-unit">/月</text>
+    <view class="level-title">开通义门会员</view>
+    <view class="plan-grid">
+      <view class="vip-card {{selectedPlan === 'monthly' ? 'selected' : ''}}" data-plan="monthly" bindtap="handlePlanSelect">
+        <text class="vip-icon">👑</text>
+        <text class="vip-name">义门月卡</text>
+        <view class="vip-price">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{memberPricing.monthly}}</text>
+          <text class="price-unit">/月</text>
+        </view>
       </view>
+      <view class="vip-card {{selectedPlan === 'yearly' ? 'selected' : ''}}" data-plan="yearly" bindtap="handlePlanSelect">
+        <text class="vip-icon">🏆</text>
+        <text class="vip-name">义门年卡</text>
+        <view class="vip-price">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{memberPricing.yearly}}</text>
+          <text class="price-unit">/年</text>
+        </view>
+      </view>
+    </view>
+    <view class="vip-benefits-mini">
+      <text>炫彩昵称 · 编号徽章 · 陈氏通谱 · 双倍签到 · 全场95折</text>
     </view>
     <button class="join-btn" bindtap="joinMember">立即开通</button>
   </view>
