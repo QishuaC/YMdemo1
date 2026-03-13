@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -100,6 +100,10 @@ const OFFICIAL_PUBLISHER = {
   avatar: ''
 };
 const FALLBACK_PUBLISHER_AVATAR = 'https://picsum.photos/seed/yimen-publisher/200/200';
+const PUBLISHER_AVATAR_FOLDER = 'userID';
+const PUBLISHER_AVATAR_ALIAS = 'publisher-avatar';
+const PUBLISHER_AVATAR_ALIAS_URL = `/uploads/${PUBLISHER_AVATAR_FOLDER}/${PUBLISHER_AVATAR_ALIAS}`;
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -637,9 +641,32 @@ function normalizeAsset(assetPath) {
   return `/uploads/${assetPath.replace(/^\/+/, '')}`;
 }
 
+function findPublisherAvatarFile() {
+  const targetDir = path.join(UPLOAD_DIR, PUBLISHER_AVATAR_FOLDER);
+  if (!fs.existsSync(targetDir)) {
+    return '';
+  }
+  const candidates = fs.readdirSync(targetDir)
+    .filter((name) => {
+      const ext = path.extname(name).toLowerCase();
+      if (!IMAGE_EXTENSIONS.has(ext)) return false;
+      const baseName = path.basename(name, ext);
+      return baseName === PUBLISHER_AVATAR_ALIAS;
+    })
+    .sort((a, b) => fs.statSync(path.join(targetDir, b)).mtimeMs - fs.statSync(path.join(targetDir, a)).mtimeMs);
+  return candidates[0] || '';
+}
+
 function resolveValidAvatar(avatarPath, fallback = '') {
   const normalized = normalizeAsset(avatarPath);
   if (!normalized) return fallback;
+  if (normalized === PUBLISHER_AVATAR_ALIAS_URL) {
+    const aliasFile = findPublisherAvatarFile();
+    if (!aliasFile) {
+      return fallback;
+    }
+    return normalized;
+  }
   if (normalized.startsWith('/uploads/')) {
     const relativePath = normalized.slice('/uploads/'.length);
     const uploadPath = path.join(UPLOAD_DIR, relativePath);
@@ -709,6 +736,16 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/api', rateLimitMiddleware);
+
+app.get(PUBLISHER_AVATAR_ALIAS_URL, (req, res) => {
+  const fileName = findPublisherAvatarFile();
+  if (!fileName) {
+    res.status(404).json({ success: false, message: '发布者头像不存在' });
+    return;
+  }
+  const filePath = path.join(UPLOAD_DIR, PUBLISHER_AVATAR_FOLDER, fileName);
+  res.sendFile(filePath);
+});
 
 // 为上传的文件设置正确的MIME类型
 app.use('/uploads', (req, res, next) => {
@@ -1002,6 +1039,49 @@ app.post('/api/upload', uploadImage.single('file'), (req, res) => {
     success: true,
     url: `/uploads/${req.file.filename}`,
     filename: req.file.filename
+  });
+});
+
+app.post('/api/upload/publisher-avatar', uploadImage.single('file'), (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ success: false, message: '缺少上传文件' });
+    return;
+  }
+  const db = readDbWithCache();
+  const targetDir = path.join(UPLOAD_DIR, PUBLISHER_AVATAR_FOLDER);
+  ensureDir(targetDir);
+  const existedImages = fs.readdirSync(targetDir).filter((name) => {
+    const ext = path.extname(name).toLowerCase();
+    if (!IMAGE_EXTENSIONS.has(ext)) {
+      return false;
+    }
+    const baseName = path.basename(name, ext);
+    return baseName === PUBLISHER_AVATAR_ALIAS;
+  });
+  existedImages.forEach((name) => {
+    const filePath = path.join(targetDir, name);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  });
+  const uploadExt = path.extname(req.file.originalname || req.file.filename || '').toLowerCase();
+  const safeExt = IMAGE_EXTENSIONS.has(uploadExt) ? uploadExt : '.jpg';
+  const targetFileName = `${PUBLISHER_AVATAR_ALIAS}${safeExt}`;
+  const targetPath = path.join(targetDir, targetFileName);
+  if (fs.existsSync(targetPath)) {
+    fs.unlinkSync(targetPath);
+  }
+  fs.renameSync(req.file.path, targetPath);
+  const avatarUrl = PUBLISHER_AVATAR_ALIAS_URL;
+  db.uiConfig = {
+    ...(db.uiConfig || {}),
+    publisherAvatar: avatarUrl
+  };
+  writeDb(db);
+  res.json({
+    success: true,
+    url: avatarUrl,
+    filename: targetFileName
   });
 });
 

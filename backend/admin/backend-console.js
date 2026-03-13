@@ -1314,12 +1314,12 @@ function bindUiEvents() {
     }
   });
 
-  const setupFileUpload = (fileInputId, textInputId, previewId) => {
+  const setupFileUpload = (fileInputId, textInputId, previewId, uploadApi = '/api/upload') => {
     byId(fileInputId).addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       try {
-        const data = await uploadFile(file);
+        const data = await uploadFile(file, uploadApi);
         const url = data.url;
         byId(textInputId).value = url;
         const preview = byId(previewId);
@@ -1336,7 +1336,7 @@ function bindUiEvents() {
   setupFileUpload('uiShopBanner1File', 'uiShopBanner1ImageInput', 'uiShopBanner1Preview');
   setupFileUpload('uiShopBanner2File', 'uiShopBanner2ImageInput', 'uiShopBanner2Preview');
   setupFileUpload('uiAvatarFile', 'uiAvatarInput', 'uiAvatarPreview');
-  setupFileUpload('uiPublisherAvatarFile', 'uiPublisherAvatarInput', 'uiPublisherAvatarPreview');
+  setupFileUpload('uiPublisherAvatarFile', 'uiPublisherAvatarInput', 'uiPublisherAvatarPreview', '/api/upload/publisher-avatar');
 }
 
 function updateCommentVideoFilterOptions() {
