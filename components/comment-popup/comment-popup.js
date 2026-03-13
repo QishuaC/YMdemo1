@@ -46,6 +46,10 @@ Component({
     commentCount: {
       type: Number,
       value: 0
+    },
+    isMember: {
+      type: Boolean,
+      value: false
     }
   },
 
@@ -62,7 +66,8 @@ Component({
     noMore: false,
     page: 1,
     limit: 20,
-    useMock: false
+    useMock: false,
+    currentUserId: ''
   },
 
   observers: {
@@ -82,14 +87,24 @@ Component({
   },
 
   methods: {
+    getCurrentUserId() {
+      const storedUserId = wx.getStorageSync('userId');
+      if (storedUserId) return String(storedUserId);
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      return String(userInfo._id || userInfo.openId || 'wx_user_001');
+    },
+
     async loadComments(reset = false) {
       if (this.data.loading) return;
 
       const page = reset ? 1 : this.data.page;
+      const userId = this.getCurrentUserId();
+      const isMember = this.data.isMember;
 
       this.setData({
         loading: true,
-        loadingMore: !reset
+        loadingMore: !reset,
+        currentUserId: userId
       });
 
       try {
@@ -103,9 +118,16 @@ Component({
         });
 
         if (res.success) {
-          const userId = wx.getStorageSync('userId');
           const commentsWithLikeStatus = res.data.map(comment => {
             const liked = comment.likedBy && comment.likedBy.some(id => id.toString() === userId);
+            const commentUserId = typeof comment.userId === 'object' ? comment.userId : {
+              _id: comment.userId,
+              nickname: comment.nickname || '游客',
+              avatar: comment.avatar || ''
+            };
+            const isCurrentUserMember = isMember && commentUserId._id === userId;
+            const canDelete = commentUserId._id === userId;
+            
             const replies = comment.replies ? comment.replies.map(reply => {
               const replyLiked = reply.likedBy && reply.likedBy.some(id => id.toString() === userId);
               const replyUserId = typeof reply.userId === 'object' ? reply.userId : {
@@ -113,25 +135,25 @@ Component({
                 nickname: reply.nickname || '游客',
                 avatar: reply.avatar || ''
               };
+              const isReplyUserMember = isMember && replyUserId._id === userId;
+              const canDeleteReply = replyUserId._id === userId;
               return {
                 ...reply,
                 userId: replyUserId,
                 liked: replyLiked,
+                canDelete: canDeleteReply,
+                isColorful: isReplyUserMember,
                 formattedTime: formatTime(new Date(reply.createdAt).getTime())
               };
             }) : [];
-            
-            const commentUserId = typeof comment.userId === 'object' ? comment.userId : {
-              _id: comment.userId,
-              nickname: comment.nickname || '游客',
-              avatar: comment.avatar || ''
-            };
             
             return {
               ...comment,
               userId: commentUserId,
               liked,
               replies,
+              canDelete,
+              isColorful: isCurrentUserMember,
               formattedTime: formatTime(new Date(comment.createdAt).getTime())
             };
           });
@@ -156,9 +178,18 @@ Component({
         console.error('加载评论失败，使用mock数据:', error);
         
         const videoComments = mockComments.filter(c => String(c.videoId) === String(this.data.videoId));
-        const userId = wx.getStorageSync('userId');
+        const userId = this.getCurrentUserId();
+        const isMember = this.data.isMember;
         const commentsWithLikeStatus = videoComments.map(comment => {
           const liked = comment.likedBy && comment.likedBy.some(id => id.toString() === userId);
+          const commentUserId = typeof comment.userId === 'object' ? comment.userId : {
+            _id: comment.userId,
+            nickname: comment.nickname || '游客',
+            avatar: comment.avatar || ''
+          };
+          const isCurrentUserMember = isMember && commentUserId._id === userId;
+          const canDelete = commentUserId._id === userId;
+          
           const replies = comment.replies ? comment.replies.map(reply => {
             const replyLiked = reply.likedBy && reply.likedBy.some(id => id.toString() === userId);
             const replyUserId = typeof reply.userId === 'object' ? reply.userId : {
@@ -166,25 +197,25 @@ Component({
               nickname: reply.nickname || '游客',
               avatar: reply.avatar || ''
             };
+            const isReplyUserMember = isMember && replyUserId._id === userId;
+            const canDeleteReply = replyUserId._id === userId;
             return {
               ...reply,
               userId: replyUserId,
               liked: replyLiked,
+              canDelete: canDeleteReply,
+              isColorful: isReplyUserMember,
               formattedTime: formatTime(reply.createdAt)
             };
           }) : [];
-          
-          const commentUserId = typeof comment.userId === 'object' ? comment.userId : {
-            _id: comment.userId,
-            nickname: comment.nickname || '游客',
-            avatar: comment.avatar || ''
-          };
           
           return {
             ...comment,
             userId: commentUserId,
             liked,
             replies,
+            canDelete,
+            isColorful: isCurrentUserMember,
             formattedTime: formatTime(comment.createdAt)
           };
         });
@@ -232,12 +263,22 @@ Component({
         });
 
         if (res.success) {
-          const userId = wx.getStorageSync('userId');
+          const userId = this.getCurrentUserId();
+          const isMember = this.data.isMember;
           const repliesWithLikeStatus = res.data.map(reply => {
             const liked = reply.likedBy && reply.likedBy.some(id => id.toString() === userId);
+            const replyUserId = typeof reply.userId === 'object' ? reply.userId : {
+              _id: reply.userId,
+              nickname: reply.nickname || '游客',
+              avatar: reply.avatar || ''
+            };
             return {
               ...reply,
-              liked
+              userId: replyUserId,
+              liked,
+              canDelete: replyUserId._id === userId,
+              isColorful: isMember && replyUserId._id === userId,
+              formattedTime: formatTime(new Date(reply.createdAt).getTime())
             };
           });
 
@@ -287,7 +328,7 @@ Component({
           _id: 'mock_' + Date.now(),
           videoId: this.data.videoId,
           userId: {
-            _id: 'current_user',
+            _id: this.getCurrentUserId(),
             nickname: userInfo.nickname,
             avatar: userInfo.avatar
           },
@@ -299,7 +340,8 @@ Component({
           createdAt: Date.now(),
           formattedTime: '刚刚',
           replies: [],
-          replyCount: 0
+          replyCount: 0,
+          canDelete: true
         };
 
         if (this.data.replyToId) {
@@ -359,14 +401,15 @@ Component({
             icon: 'success'
           });
 
-          const userId = wx.getStorageSync('userId');
+          const userId = this.getCurrentUserId();
           const newComment = {
             ...res.data,
             liked: false,
             likes: 0,
             replies: [],
             replyCount: 0,
-            formattedTime: '刚刚'
+            formattedTime: '刚刚',
+            canDelete: res.data?.userId?._id === userId
           };
 
           if (this.data.replyToId) {
@@ -470,6 +513,93 @@ Component({
         console.error('点赞失败:', error);
         wx.showToast({
           title: '点赞失败',
+          icon: 'none'
+        });
+      }
+    },
+
+    async deleteComment(e) {
+      const { commentId, index, replyIndex } = e.currentTarget.dataset;
+      const isReply = replyIndex !== undefined;
+      const target = isReply ? this.data.comments[index]?.replies?.[replyIndex] : this.data.comments[index];
+      if (!target || !target.canDelete) {
+        wx.showToast({
+          title: '仅支持删除自己的评论',
+          icon: 'none'
+        });
+        return;
+      }
+      const modalRes = await new Promise((resolve) => {
+        wx.showModal({
+          title: '删除评论',
+          content: '确认删除这条评论吗？',
+          confirmColor: '#ff4d4f',
+          success: resolve,
+          fail: () => resolve({ confirm: false })
+        });
+      });
+      if (!modalRes.confirm) {
+        return;
+      }
+      if (this.data.useMock) {
+        const updatedComments = [...this.data.comments];
+        let deletedCount = 1;
+        if (isReply) {
+          updatedComments[index].replies.splice(replyIndex, 1);
+          updatedComments[index].replyCount = Math.max(0, (updatedComments[index].replyCount || 0) - 1);
+        } else {
+          deletedCount = 1 + (updatedComments[index].replies?.length || 0);
+          updatedComments.splice(index, 1);
+        }
+        this.setData({
+          comments: updatedComments
+        });
+        const nextCount = Math.max(0, (this.data.commentCount || 0) - deletedCount);
+        this.triggerEvent('commentcountupdate', {
+          count: nextCount
+        });
+        wx.showToast({
+          title: '删除成功',
+          icon: 'success'
+        });
+        return;
+      }
+      try {
+        const res = await app.request({
+          url: `/api/comments/${commentId}`,
+          method: 'DELETE'
+        });
+        if (!res.success) {
+          wx.showToast({
+            title: res.message || '删除失败',
+            icon: 'none'
+          });
+          return;
+        }
+        const updatedComments = [...this.data.comments];
+        let deletedCount = Number(res.deletedCount) || 1;
+        if (isReply) {
+          updatedComments[index].replies.splice(replyIndex, 1);
+          updatedComments[index].replyCount = Math.max(0, (updatedComments[index].replyCount || 0) - 1);
+          deletedCount = 1;
+        } else {
+          updatedComments.splice(index, 1);
+        }
+        this.setData({
+          comments: updatedComments
+        });
+        const nextCount = Math.max(0, (this.data.commentCount || 0) - deletedCount);
+        this.triggerEvent('commentcountupdate', {
+          count: nextCount
+        });
+        wx.showToast({
+          title: '删除成功',
+          icon: 'success'
+        });
+      } catch (error) {
+        console.error('删除评论失败:', error);
+        wx.showToast({
+          title: '删除失败',
           icon: 'none'
         });
       }

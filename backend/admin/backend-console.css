@@ -473,6 +473,31 @@ tbody tr:last-child td {
   accent-color: #2580ff;
 }
 
+.video-checkbox,
+.article-checkbox,
+#selectAllVideos,
+#selectAllArticles {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transform: scale(1.2);
+  margin: 8px;
+}
+
+.video-checkbox:hover,
+.article-checkbox:hover,
+#selectAllVideos:hover,
+#selectAllArticles:hover {
+  transform: scale(1.3);
+}
+
+.video-checkbox:checked,
+.article-checkbox:checked,
+#selectAllVideos:checked,
+#selectAllArticles:checked {
+  accent-color: #2580ff;
+}
+
 /* 进度条样式 */
 .progress-bar {
   width: 100%;
@@ -520,4 +545,83 @@ tbody tr:last-child td {
 .points-tab.active {
   background: #173f7a;
   color: white;
+}
+
+.comment-video-title-cell {
+  font-size: 20px;
+  max-width: 180px;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.video-title-cell {
+  font-size: 18px;
+  max-width: 300px;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.video-url-cell {
+  font-size: 14px;
+  max-width: 350px;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.4;
+  color: #666;
+}
+
+.security-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.security-card {
+  border: 1px solid #e4eef9;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+}
+
+.security-card h3 {
+  margin: 0 0 14px;
+  font-size: 28px;
+  color: #0a2c63;
+}
+
+.security-behavior-table-wrap {
+  border: 1px solid #edf2fa;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.security-toggle {
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.security-number-input,
+.security-message-input {
+  border: 1px solid #d6e5f8;
+  border-radius: 8px;
+  font-size: 20px;
+  padding: 8px 10px;
+}
+
+.security-number-input {
+  width: 120px;
+}
+
+.security-message-input {
+  width: 280px;
+}
+
+.security-anomaly-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }

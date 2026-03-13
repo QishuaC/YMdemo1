@@ -81,31 +81,59 @@ Page({
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
       success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-        wx.uploadFile({
-          url: app.globalData.baseUrl + '/api/upload/user-avatar',
-          filePath: tempFilePath,
-          name: 'file',
-          header: {
-            'x-user-id': auth.getUserId()
-          },
-          success: (uploadRes) => {
-            const data = JSON.parse(uploadRes.data);
-            if (data.success) {
-              let avatarUrl = data.url;
-              if (avatarUrl && avatarUrl.startsWith('/uploads/')) {
-                avatarUrl = `${app.globalData.baseUrl}${avatarUrl}?v=${Date.now()}`;
+        const tempFile = res.tempFiles[0];
+        const tempFilePath = tempFile.tempFilePath;
+        const fileSize = tempFile.size;
+        
+        if (fileSize > 20 * 1024 * 1024) {
+          wx.showModal({
+            title: '提示',
+            content: '图片文件过大，请选择小于20MB的图片',
+            showCancel: false,
+            confirmText: '知道了'
+          });
+          return;
+        }
+        
+        wx.showLoading({ title: '处理中...' });
+        wx.compressImage({
+          src: tempFilePath,
+          quality: 80,
+          compressedWidth: 512,
+          compressedHeight: 512,
+          success: (compressRes) => {
+            wx.uploadFile({
+              url: app.globalData.baseUrl + '/api/upload/user-avatar',
+              filePath: compressRes.tempFilePath,
+              name: 'file',
+              header: {
+                'x-user-id': auth.getUserId()
+              },
+              success: (uploadRes) => {
+                wx.hideLoading();
+                const data = JSON.parse(uploadRes.data);
+                if (data.success) {
+                  let avatarUrl = data.url;
+                  if (avatarUrl && avatarUrl.startsWith('/uploads/')) {
+                    avatarUrl = `${app.globalData.baseUrl}${avatarUrl}?v=${Date.now()}`;
+                  }
+                  this.setData({
+                    'profile.avatar': avatarUrl
+                  });
+                  wx.showToast({ title: '头像上传成功', icon: 'success' });
+                } else {
+                  wx.showToast({ title: data.message || '上传失败', icon: 'none' });
+                }
+              },
+              fail: () => {
+                wx.hideLoading();
+                wx.showToast({ title: '上传失败', icon: 'none' });
               }
-              this.setData({
-                'profile.avatar': avatarUrl
-              });
-              wx.showToast({ title: '头像上传成功', icon: 'success' });
-            } else {
-              wx.showToast({ title: data.message || '上传失败', icon: 'none' });
-            }
+            });
           },
           fail: () => {
-            wx.showToast({ title: '上传失败', icon: 'none' });
+            wx.hideLoading();
+            wx.showToast({ title: '图片处理失败', icon: 'none' });
           }
         });
       }

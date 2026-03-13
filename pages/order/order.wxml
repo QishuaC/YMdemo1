@@ -1,35 +1,67 @@
 <view class="container">
   <view class="tabs">
-    <view class="tab-item {{activeTab === 'all' ? 'active' : ''}}" bindtap="switchTab" data-tab="all">全部</view>
-    <view class="tab-item {{activeTab === 'pending' ? 'active' : ''}}" bindtap="switchTab" data-tab="pending">待付款</view>
-    <view class="tab-item {{activeTab === 'paid' ? 'active' : ''}}" bindtap="switchTab" data-tab="paid">待发货</view>
-    <view class="tab-item {{activeTab === 'shipping' ? 'active' : ''}}" bindtap="switchTab" data-tab="shipping">待收货</view>
-    <view class="tab-item {{activeTab === 'delivered' ? 'active' : ''}}" bindtap="switchTab" data-tab="delivered">已完成</view>
+    <view class="tab-item {{activeTab === 'cancelled' ? 'active' : ''}}" bindtap="switchTab" data-tab="cancelled">已取消</view>
+    <view class="tab-item {{activeTab === 'pending' ? 'active' : ''}}" bindtap="switchTab" data-tab="pending">待支付</view>
+    <view class="tab-item {{activeTab === 'paid' ? 'active' : ''}}" bindtap="switchTab" data-tab="paid">已支付</view>
+    <view class="tab-item {{activeTab === 'shipped' ? 'active' : ''}}" bindtap="switchTab" data-tab="shipped">已发货</view>
+    <view class="tab-item {{activeTab === 'refund' ? 'active' : ''}}" bindtap="switchTab" data-tab="refund">售后中</view>
+    <view class="tab-item {{activeTab === 'completed' ? 'active' : ''}}" bindtap="switchTab" data-tab="completed">已完成</view>
   </view>
 
   <view class="order-list">
     <view class="order-card" wx:for="{{orders}}" wx:key="id" bindtap="viewOrderDetail" data-id="{{item.id}}">
       <view class="order-header">
-        <text class="order-number">订单号：{{item.orderNumber}}</text>
-        <text class="order-status {{item.status === 'paid' && item.shippingStatus === 'shipped' ? 'shipping' : item.status}}">{{item.statusText}}</text>
+        <view class="order-header-left">
+          <view class="order-number-wrapper">
+            <text class="order-number">订单号：{{item.orderNumber}}</text>
+          </view>
+        </view>
+        <view class="order-header-right">
+          <view class="refund-btn" wx:if="{{item.status === 'paid'}}" catchtap="requestRefund" data-id="{{item.id}}" data-order-number="{{item.orderNumber}}">
+            <text class="refund-icon-text">↩</text>
+            <text class="refund-text">申请退款</text>
+          </view>
+          <view class="status-badge {{item.status}}">
+            <text class="status-icon" wx:if="{{item.status === 'refund_pending'}}">🔄</text>
+            <text class="status-icon" wx:if="{{item.status === 'refunded'}}">✅</text>
+            <text class="order-status">{{item.statusText}}</text>
+          </view>
+        </view>
       </view>
       
-      <view class="shipping-info" wx:if="{{item.shippingStatus === 'shipped'}}">
+      <view class="refund-info-card" wx:if="{{item.status === 'refund_pending'}}">
+        <view class="refund-icon-wrapper">
+          <text class="refund-main-icon">💳</text>
+        </view>
+        <view class="refund-content">
+          <view class="refund-title">退款申请已提交</view>
+          <view class="refund-desc">我们正在处理您的退款申请，请耐心等待</view>
+          <view class="refund-tips">预计1-3个工作日内到账</view>
+        </view>
+      </view>
+      
+      <view class="refund-info-card refund-success" wx:if="{{item.status === 'refunded'}}">
+        <view class="refund-icon-wrapper">
+          <text class="refund-main-icon">✓</text>
+        </view>
+        <view class="refund-content">
+          <view class="refund-title">退款成功</view>
+          <view class="refund-desc">退款已原路退回</view>
+        </view>
+      </view>
+      
+      <view class="shipping-info {{item.status === 'refund_pending' ? 'shipping-info-refund' : ''}}" wx:if="{{item.shippingStatus === 'shipped' && item.status !== 'refund_pending' && item.status !== 'refunded'}}">
         <view class="shipping-status">
-          <text class="shipping-label">发货状态：</text>
-          <text class="shipping-status-text shipped">{{item.shippingStatusText}}</text>
+          <text class="shipping-label">物流单号：</text>
+          <text class="shipping-status-text shipped">{{item.trackingNumber || '暂无'}}</text>
         </view>
         <view class="shipped-time" wx:if="{{item.shippedAt}}">
           <text class="shipped-label">发货时间：</text>
           <text class="shipped-value">{{item.shippedAt}}</text>
         </view>
-        <view class="tracking-number" wx:if="{{item.trackingNumber}}">
-          <text class="tracking-label">快递单号：</text>
-          <text class="tracking-value">{{item.trackingNumber}}</text>
-        </view>
       </view>
       
-      <view class="shipping-info" wx:if="{{item.shippingStatus !== 'shipped' && item.shippingStatus}}">
+      <view class="shipping-info" wx:if="{{item.shippingStatus !== 'shipped' && item.shippingStatus && item.status !== 'refund_pending' && item.status !== 'refunded'}}">
         <view class="shipping-status">
           <text class="shipping-label">发货状态：</text>
           <text class="shipping-status-text">{{item.shippingStatusText}}</text>
@@ -79,9 +111,6 @@
         <button class="action-btn primary" catchtap="payOrder" data-id="{{item.id}}">立即支付</button>
       </view>
       
-      <view class="order-actions" wx:if="{{item.status === 'shipping' || (item.status === 'paid' && item.shippingStatus === 'shipped')}}">
-        <button class="action-btn primary" catchtap="confirmReceive" data-id="{{item.id}}">确认收货</button>
-      </view>
     </view>
     
     <view class="empty-state" wx:if="{{orders.length === 0}}">

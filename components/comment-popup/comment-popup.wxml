@@ -17,7 +17,7 @@
         <view class="comment-main">
           <view class="comment-user">
             <yimen-badge compact="{{true}}" />
-            <text class="comment-user-name">{{item.userId.nickname}}</text>
+            <text class="comment-user-name {{item.isColorful ? 'colorful' : ''}}">{{item.userId.nickname}}</text>
           </view>
           <view class="comment-text">{{item.content}}</view>
           <view class="comment-footer">
@@ -30,6 +30,9 @@
               <view class="action-item" catchtap="replyComment" data-comment-id="{{item._id}}" data-user-name="{{item.userId.nickname}}">
                 <text class="action-text">回复</text>
               </view>
+              <view class="action-item" wx:if="{{item.canDelete}}" catchtap="deleteComment" data-comment-id="{{item._id}}" data-index="{{index}}">
+                <text class="action-delete">删除</text>
+              </view>
             </view>
           </view>
           
@@ -39,7 +42,7 @@
               <view class="reply-main">
                 <view class="reply-user">
                   <yimen-badge compact="{{true}}" />
-                  <text class="reply-user-name">{{reply.userId.nickname}}</text>
+                  <text class="reply-user-name {{reply.isColorful ? 'colorful' : ''}}">{{reply.userId.nickname}}</text>
                 </view>
                 <view class="reply-text">{{reply.content}}</view>
                 <view class="reply-footer">
@@ -48,6 +51,9 @@
                     <view class="action-item" catchtap="likeComment" data-comment-id="{{reply._id}}" data-index="{{index}}" data-reply-index="{{replyIndex}}">
                       <text class="action-icon {{reply.liked ? 'liked' : ''}}">{{reply.liked ? '❤️' : '🤍'}}</text>
                       <text class="action-count">{{reply.likes}}</text>
+                    </view>
+                    <view class="action-item" wx:if="{{reply.canDelete}}" catchtap="deleteComment" data-comment-id="{{reply._id}}" data-index="{{index}}" data-reply-index="{{replyIndex}}">
+                      <text class="action-delete">删除</text>
                     </view>
                   </view>
                 </view>

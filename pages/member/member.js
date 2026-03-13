@@ -24,7 +24,7 @@ Page({
       { icon: '📦', title: '我的订单' },
       { icon: '📍', title: '收货地址' },
       { icon: '🎁', title: '我的优惠券' },
-      { icon: '⭐', title: '我的收藏' }
+      { icon: '💬', title: '义门客服' }
     ]
   },
 
@@ -145,11 +145,15 @@ Page({
     
     app.request({
       url: '/api/checkin',
-      method: 'POST'
+      method: 'POST',
+      data: {
+        isMember: this.data.isMember
+      }
     }).then((res) => {
       wx.hideLoading();
       if (res.success) {
-        wx.showToast({ title: '签到成功！+1积分', icon: 'success' });
+        const earnedPoints = res.data.earnedPoints || (this.data.isMember ? 20 : 10);
+        wx.showToast({ title: `签到成功！+${earnedPoints}积分`, icon: 'success' });
         this.setData({
           hasCheckedIn: true,
           totalCheckIns: res.data.totalCheckIns,
@@ -271,6 +275,8 @@ Page({
       wx.navigateTo({ url: '/pages/order/order' });
     } else if (menu.title === '收货地址') {
       wx.navigateTo({ url: '/pages/address/address' });
+    } else if (menu.title === '义门客服') {
+      wx.navigateTo({ url: '/pages/customer-service/customer-service' });
     } else {
       wx.showToast({ title: menu.title, icon: 'none' });
     }

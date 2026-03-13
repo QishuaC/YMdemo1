@@ -6,7 +6,7 @@
         <view class="user-name-row">
           <view class="user-name-wrap">
             <yimen-badge wx:if="{{isLoggedIn && userInfo.nickName}}" />
-            <text class="user-name">{{userInfo.nickName || '点击登录'}}</text>
+            <text class="user-name {{isMember && isLoggedIn ? 'colorful' : ''}}">{{userInfo.nickName || '点击登录'}}</text>
           </view>
           <view class="gender-badge" wx:if="{{userInfo && userInfo.gender && userInfo.gender !== ''}}" data-gender="{{userInfo.gender}}">
             <text class="gender-icon">{{(userInfo.gender === 1 || userInfo.gender === 'male') ? '♂' : '♀'}}</text>

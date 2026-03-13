@@ -19,9 +19,11 @@
 
     <aside class="sidebar">
       <button class="menu-item active" data-module="videos">视频管理</button>
+      <button class="menu-item" data-module="comments">评论管理</button>
       <button class="menu-item" data-module="articles">文章管理</button>
       <button class="menu-item" data-module="products">商品管理</button>
       <button class="menu-item" data-module="orders">订单管理</button>
+      <button class="menu-item" data-module="security-policy">安全策略</button>
       <button class="menu-item" data-module="users">用户管理</button>
       <button class="menu-item" data-module="points">积分管理</button>
       <button class="menu-item" data-module="exchange-products">积分兑换商品</button>
@@ -33,6 +35,16 @@
         <div class="module-head">
           <h2>视频管理</h2>
           <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="videosLimitSelect">显示条数：</label>
+              <select id="videosLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
             <div style="display: flex; align-items: center; margin-right: 10px;">
               <span style="font-size: 16px; color: #666; margin-right: 5px;">排序：</span>
               <select id="videoSortSelect" style="padding: 8px; border: 1px solid #5e9cff; border-radius: 6px; color: #1f6fff; font-size: 16px; background: #fff; cursor: pointer; min-width: 150px;">
@@ -44,6 +56,7 @@
                 <option value="comments-asc">评论(低→高)</option>
               </select>
             </div>
+            <button class="btn danger" id="deleteSelectedVideosBtn" style="display: none;">批量删除</button>
             <button class="btn" id="uploadVideoByUrlBtn">URL上传</button>
             <button class="btn primary" data-action="create" data-module="videos">上传视频</button>
           </div>
@@ -52,6 +65,7 @@
           <table>
             <thead>
               <tr>
+                <th><input type="checkbox" id="selectAllVideos"></th>
                 <th>标题</th>
                 <th>作者</th>
                 <th>封面</th>
@@ -64,47 +78,83 @@
             <tbody id="videosTable"></tbody>
           </table>
         </div>
-        <div class="embedded-comments-block" id="videoCommentsPanel">
-          <div class="module-head embedded-comments-head">
-            <h2>评论管理</h2>
-            <div class="module-actions">
-              <div class="filter-wrap">
-                <label for="commentVideoFilter">按视频筛选：</label>
-                <select id="commentVideoFilter">
-                  <option value="">全部</option>
-                </select>
-              </div>
-              <button id="deleteSelectedCommentsBtn" class="btn danger" style="display: none;">批量删除</button>
+      </section>
+
+      <section id="commentsModule" class="module">
+        <div class="module-head">
+          <h2>评论管理</h2>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="commentsLimitSelect">显示条数：</label>
+              <select id="commentsLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
             </div>
+            <div class="filter-wrap">
+              <label for="commentVideoFilter">按视频筛选：</label>
+              <select id="commentVideoFilter">
+                <option value="">全部</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; margin-right: 10px;">
+              <span style="font-size: 16px; color: #666; margin-right: 5px;">排序：</span>
+              <select id="commentSortSelect" style="padding: 8px; border: 1px solid #5e9cff; border-radius: 6px; color: #1f6fff; font-size: 16px; background: #fff; cursor: pointer; min-width: 150px;">
+                <option value="date-desc">评论时间(晚→早)</option>
+                <option value="date-asc">评论时间(早→晚)</option>
+                <option value="likes-desc">点赞(高→低)</option>
+                <option value="likes-asc">点赞(低→高)</option>
+                <option value="length-desc">评论字数(多→少)</option>
+                <option value="length-asc">评论字数(少→多)</option>
+              </select>
+            </div>
+            <button id="deleteSelectedCommentsBtn" class="btn danger" style="display: none;">批量删除</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th><input type="checkbox" id="selectAllComments"></th>
-                  <th>用户</th>
-                  <th>视频</th>
-                  <th>内容</th>
-                  <th>点赞</th>
-                  <th>时间</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="commentsTable"></tbody>
-            </table>
-          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAllComments"></th>
+                <th>用户</th>
+                <th>标题</th>
+                <th>内容</th>
+                <th>点赞</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="commentsTable"></tbody>
+          </table>
         </div>
       </section>
 
       <section id="articlesModule" class="module">
         <div class="module-head">
           <h2>文章管理</h2>
-          <button class="btn primary" data-action="create" data-module="articles">上传文章</button>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="articlesLimitSelect">显示条数：</label>
+              <select id="articlesLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
+            <button class="btn danger" id="deleteSelectedArticlesBtn" style="display: none;">批量删除</button>
+            <button class="btn primary" data-action="create" data-module="articles">上传文章</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th><input type="checkbox" id="selectAllArticles"></th>
                 <th>标题</th>
                 <th>作者</th>
                 <th>封面</th>
@@ -149,6 +199,27 @@
           <h2>订单管理</h2>
           <div class="module-actions">
             <div class="filter-wrap">
+              <label for="ordersLimitSelect">显示条数：</label>
+              <select id="ordersLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
+            <div class="filter-wrap">
+              <label for="orderStatusFilter">订单状态筛选：</label>
+              <select id="orderStatusFilter">
+                <option value="">全部</option>
+                <option value="pending">待支付</option>
+                <option value="paid">已支付</option>
+                <option value="cancelled">已取消</option>
+                <option value="refund_pending">售后中</option>
+                <option value="refunded">已退款</option>
+              </select>
+            </div>
+            <div class="filter-wrap">
               <label for="orderShippingStatusFilter">发货状态筛选：</label>
               <select id="orderShippingStatusFilter">
                 <option value="">全部</option>
@@ -156,19 +227,9 @@
                 <option value="shipped">已发货</option>
               </select>
             </div>
-            <div class="filter-wrap">
-              <label for="orderStatusFilter">状态筛选：</label>
-              <select id="orderStatusFilter">
-                <option value="">全部</option>
-                <option value="pending">待支付</option>
-                <option value="paid">已支付</option>
-                <option value="shipping">配送中</option>
-                <option value="delivered">已签收</option>
-                <option value="cancelled">已取消</option>
-              </select>
-            </div>
             <button id="exportOrdersBtn" class="btn">导出订单</button>
             <button id="importOrdersBtn" class="btn">导入订单</button>
+            <button id="orderLogsBtn" class="btn">操作日志</button>
             <button id="deleteSelectedOrdersBtn" class="btn danger" style="display: none;">批量删除</button>
             <input id="ordersImportInput" type="file" accept=".xlsx,.xls,.csv,application/json" hidden>
           </div>
@@ -187,7 +248,7 @@
                 <th>收货人</th>
                 <th>收货电话</th>
                 <th>收货地址</th>
-                <th>状态</th>
+                <th>订单状态</th>
                 <th>发货状态</th>
                 <th>快递单号</th>
                 <th>创建时间</th>
@@ -199,9 +260,86 @@
         </div>
       </section>
 
+      <section id="security-policyModule" class="module">
+        <div class="module-head">
+          <h2>安全策略</h2>
+          <div class="module-actions">
+            <button id="refreshSecurityPolicyBtn" class="btn">刷新策略</button>
+            <button id="saveSecurityPolicyBtn" class="btn primary">保存策略</button>
+          </div>
+        </div>
+        <div class="form-wrap" style="padding: 20px;">
+          <div class="security-grid">
+            <div class="security-card">
+              <h3>监测周期</h3>
+              <div class="form-row">
+                <label for="securityMonitorWindowInput">周期（分钟）</label>
+                <input type="number" id="securityMonitorWindowInput" min="1" max="1440" value="10">
+              </div>
+              <div class="hint">异常列表仅展示该周期内触发的数据</div>
+            </div>
+            <div class="security-card">
+              <h3>行为策略</h3>
+              <div class="security-behavior-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>行为</th>
+                      <th>启用</th>
+                      <th>周期(分钟)</th>
+                      <th>次数阈值</th>
+                      <th>封禁(分钟)</th>
+                      <th>提示语</th>
+                    </tr>
+                  </thead>
+                  <tbody id="securityPolicyTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="security-card" style="margin-top: 20px;">
+            <div class="security-anomaly-head">
+              <h3>异常监测数据</h3>
+              <div class="module-actions">
+                <button id="refreshSecurityAnomaliesBtn" class="btn">刷新异常</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>行为</th>
+                    <th>用户</th>
+                    <th>IP</th>
+                    <th>阈值</th>
+                    <th>当前次数</th>
+                    <th>处理结果</th>
+                  </tr>
+                </thead>
+                <tbody id="securityAnomaliesTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="usersModule" class="module">
         <div class="module-head">
           <h2>用户管理</h2>
+          <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="usersLimitSelect">显示条数：</label>
+              <select id="usersLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -228,6 +366,16 @@
         <div class="module-head">
           <h2>积分管理</h2>
           <div class="module-actions">
+            <div class="filter-wrap">
+              <label for="pointsLimitSelect">显示条数：</label>
+              <select id="pointsLimitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+              </select>
+            </div>
             <button class="btn points-tab active" data-tab="users">用户积分</button>
             <button class="btn points-tab" data-tab="redemptions">积分兑换</button>
           </div>

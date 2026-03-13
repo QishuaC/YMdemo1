@@ -13,7 +13,8 @@ Page({
     page: 1,
     limit: 10,
     hasMore: true,
-    loading: false
+    loading: false,
+    isMember: false
   },
 
   onLoad(options) {
@@ -34,11 +35,11 @@ Page({
   onShow() {
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) {
-      tabBar.setData({ selected: 1, visible: true });
+      tabBar.setData({ selected: 1 });
     }
-    if (!this.data.showCommentPopup) {
-      wx.showTabBar({ animation: false });
-    }
+    this.setData({
+      isMember: app.globalData.isMember || false
+    });
     // If we have videos and were playing, resume
     if (this.data.videoList.length > 0 && this.data.currentVideoIndex >= 0) {
       const videoContext = wx.createVideoContext(`video-${this.data.currentVideoIndex}`);
@@ -231,7 +232,7 @@ Page({
     
     if (!width || !height) return;
     
-    const videoFit = 'contain';
+    const videoFit = 'cover';
     
     const videoList = this.data.videoList;
     if (videoList[index]) {
@@ -295,21 +296,11 @@ Page({
         currentVideoCommentCount: video.comments,
         showCommentPopup: true
       });
-      const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
-      if (tabBar) {
-        tabBar.setData({ visible: false });
-      }
-      wx.hideTabBar({ animation: false });
     }
   },
 
   closeCommentPopup() {
     this.setData({ showCommentPopup: false });
-    const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
-    if (tabBar) {
-      tabBar.setData({ visible: true });
-    }
-    wx.showTabBar({ animation: false });
   },
 
   onCommentAdded(e) {

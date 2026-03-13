@@ -9,14 +9,29 @@ const state = {
     orders: [],
     users: [],
     comments: [],
-    exchangeProducts: []
+    exchangeProducts: [],
+    securityAnomalies: []
+  },
+  limits: {
+    videos: 20,
+    comments: 20,
+    articles: 20,
+    orders: 20,
+    users: 20,
+    points: 20,
+    'exchange-products': 20
   },
   videoSort: 'date-desc',
+  commentSort: 'date-desc',
   orderStatusFilter: '',
   orderShippingStatusFilter: '',
   commentVideoFilter: '',
   selectedComments: [],
-  selectedOrders: []
+  selectedOrders: [],
+  selectedVideos: [],
+  selectedArticles: [],
+  securityPolicy: null,
+  securityPolicyUnsupported: false
 };
 const loadedModules = new Set();
 const moduleLoadingTasks = {};
@@ -25,15 +40,45 @@ const SERVICE_TAG_OPTIONS = ['7天无理由', '运费险', '正品保障'];
 const ORDER_STATUS_MAP = {
   'pending': '待支付',
   'paid': '已支付',
-  'shipping': '配送中',
-  'delivered': '已签收',
-  'cancelled': '已取消'
+  'delivered': '已完成',
+  'cancelled': '已取消',
+  'refund_pending': '售后中',
+  'refunded': '已退款'
 };
 
 const SHIPPING_STATUS_MAP = {
   'unshipped': '未发货',
-  'shipped': '已发货'
+  'shipped': '已发货',
+  'delivered': '已送达'
 };
+
+const SECURITY_BEHAVIOR_LABELS = {
+  comment: '评论提交',
+  video_like: '视频点赞',
+  comment_like: '评论点赞',
+  order_submit: '订单提交',
+  forward: '转发分享'
+};
+
+function createFallbackSecurityPolicy() {
+  return {
+    monitorWindowMinutes: 10,
+    behaviors: {
+      comment: { enabled: true, windowMinutes: 10, maxRequests: 20, blockMinutes: 10, message: '评论过于频繁，请稍后再试' },
+      video_like: { enabled: true, windowMinutes: 5, maxRequests: 80, blockMinutes: 5, message: '点赞操作过于频繁，请稍后再试' },
+      comment_like: { enabled: true, windowMinutes: 5, maxRequests: 80, blockMinutes: 5, message: '点赞操作过于频繁，请稍后再试' },
+      order_submit: { enabled: true, windowMinutes: 10, maxRequests: 10, blockMinutes: 15, message: '订单提交过于频繁，请稍后再试' },
+      forward: { enabled: true, windowMinutes: 5, maxRequests: 120, blockMinutes: 3, message: '转发操作过于频繁，请稍后再试' }
+    }
+  };
+}
+
+function isSecurityApiUnavailableMessage(message = '') {
+  return message.includes('Cannot GET /api/security-policy')
+    || message.includes('Cannot POST /api/security-policy')
+    || message.includes('Cannot GET /api/security-anomalies')
+    || message.includes('未部署安全策略接口');
+}
 
 const moduleConfig = {
   videos: {
@@ -115,17 +160,8 @@ const moduleConfig = {
       { name: 'addressDistrict', label: '区县', type: 'text', required: false },
       { name: 'addressDetail', label: '详细地址', type: 'textarea', required: false },
       { name: 'shippingAddress', label: '用户收货地址', type: 'textarea', required: false },
-      { name: 'status', label: '状态', type: 'select', options: [
-        { value: 'pending', label: '待支付' },
-        { value: 'paid', label: '已支付' },
-        { value: 'shipping', label: '配送中' },
-        { value: 'delivered', label: '已签收' },
-        { value: 'cancelled', label: '已取消' }
-      ], required: true },
-      { name: 'shippingStatus', label: '发货状态', type: 'select', options: [
-        { value: 'unshipped', label: '未发货' },
-        { value: 'shipped', label: '已发货' }
-      ], required: false },
+      { name: 'status', label: '订单状态', type: 'select', options: Object.entries(ORDER_STATUS_MAP).map(([value, label]) => ({ value, label })), required: true },
+      { name: 'shippingStatus', label: '发货状态', type: 'select', options: Object.entries(SHIPPING_STATUS_MAP).map(([value, label]) => ({ value, label })), required: false },
       { name: 'trackingNumber', label: '快递单号', type: 'text', required: false }
     ]
   },
@@ -200,6 +236,16 @@ function formatAddressValue(input) {
   return '';
 }
 
+function getBehaviorLabel(key) {
+  return SECURITY_BEHAVIOR_LABELS[key] || key;
+}
+
+function formatBehaviorThreshold(item) {
+  const limit = Number(item.maxRequests || 0);
+  const minutes = Number(item.windowMinutes || 0);
+  return `${limit}次/${minutes}分钟`;
+}
+
 async function request(url, options = {}) {
   const res = await fetch(url, {
     headers: {
@@ -208,8 +254,25 @@ async function request(url, options = {}) {
     ...options
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || '请求失败');
+    const contentType = res.headers.get('content-type') || '';
+    let message = '请求失败';
+    if (contentType.includes('application/json')) {
+      const data = await res.json().catch(() => null);
+      if (data && data.message) {
+        message = data.message;
+      }
+    } else {
+      const text = await res.text().catch(() => '');
+      if (text) {
+        const preMatch = text.match(/<pre>([\s\S]*?)<\/pre>/i);
+        const parsed = preMatch && preMatch[1] ? preMatch[1].trim() : text.trim();
+        message = parsed || message;
+      }
+    }
+    if (isSecurityApiUnavailableMessage(message)) {
+      throw new Error('当前后端未部署安全策略接口，请重启后端服务');
+    }
+    throw new Error(message);
   }
   return await res.json();
 }
@@ -281,6 +344,19 @@ function renderTable(moduleName) {
     });
   }
   
+  if (moduleName === 'comments') {
+    const sortType = state.commentSort || 'date-desc';
+    rows = [...rows].sort((a, b) => {
+      if (sortType === 'date-desc') return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortType === 'date-asc') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortType === 'likes-desc') return (b.likes || 0) - (a.likes || 0);
+      if (sortType === 'likes-asc') return (a.likes || 0) - (b.likes || 0);
+      if (sortType === 'length-desc') return (b.content ? b.content.length : 0) - (a.content ? a.content.length : 0);
+      if (sortType === 'length-asc') return (a.content ? a.content.length : 0) - (b.content ? b.content.length : 0);
+      return 0;
+    });
+  }
+  
   if (moduleName === 'orders') {
     if (state.orderStatusFilter) {
       rows = rows.filter(row => row.status === state.orderStatusFilter);
@@ -302,18 +378,26 @@ function renderTable(moduleName) {
   if (moduleName === 'orders') {
     updateDeleteSelectedOrdersButton();
   }
+  if (moduleName === 'videos') {
+    updateDeleteSelectedVideosButton();
+  }
+  if (moduleName === 'articles') {
+    updateDeleteSelectedArticlesButton();
+  }
 }
 
 function rowTemplate(moduleName, row) {
   if (moduleName === 'videos') {
+    const isChecked = state.selectedVideos.includes(row._id);
     return `
       <tr>
-        <td>${row.title || '-'}</td>
+        <td><input type="checkbox" class="video-checkbox" data-id="${row._id}" ${isChecked ? 'checked' : ''}></td>
+        <td class="video-title-cell">${row.title || '-'}</td>
         <td>${row.author || '-'}</td>
         <td>${row.cover ? `<img class="thumb" src="${row.cover}" alt="cover">` : '-'}</td>
         <td>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="flex: 1; word-break: break-all;">${row.videoUrl || '-'}</span>
+            <span class="video-url-cell" style="flex: 1;">${row.videoUrl || '-'}</span>
             ${row.videoUrl && row.videoUrl.startsWith('/uploads/') ? 
               `<button class="btn" style="padding: 4px 8px; font-size: 20px;" data-action="open-folder" data-video-id="${row._id}" data-video-url="${row.videoUrl}">打开</button>` : 
               ''}
@@ -337,7 +421,7 @@ function rowTemplate(moduleName, row) {
       <tr>
         <td><input type="checkbox" class="comment-checkbox" data-id="${row._id}" ${isChecked ? 'checked' : ''}></td>
         <td>${row.nickname || '匿名用户'}</td>
-        <td>${videoTitle}</td>
+        <td class="comment-video-title-cell">${videoTitle}</td>
         <td>${row.content || '-'}</td>
         <td>${row.likes || 0}</td>
         <td>${formatDate(row.createdAt)}</td>
@@ -348,8 +432,10 @@ function rowTemplate(moduleName, row) {
     `;
   }
   if (moduleName === 'articles') {
+    const isChecked = state.selectedArticles.includes(row._id);
     return `
       <tr>
+        <td><input type="checkbox" class="article-checkbox" data-id="${row._id}" ${isChecked ? 'checked' : ''}></td>
         <td>${row.title || '-'}</td>
         <td>${row.author || '-'}</td>
         <td>${row.cover ? `<img class="thumb" src="${row.cover}" alt="cover">` : '-'}</td>
@@ -463,6 +549,7 @@ function actionButtons(moduleName, id) {
     return `
       <div class="cell-actions">
         <button class="btn" data-action="edit" data-module="${moduleName}" data-id="${id}">修改</button>
+        <button class="btn danger" data-action="refund" data-module="${moduleName}" data-id="${id}">退款</button>
       </div>
     `;
   }
@@ -479,11 +566,26 @@ async function fetchModule(moduleName) {
     await fetchUiConfig();
     return;
   }
+  if (moduleName === 'security-policy') {
+    await fetchSecurityPolicy();
+    await fetchSecurityAnomalies();
+    return;
+  }
   const config = moduleConfig[moduleName];
   let url = config.listApi;
+  const limit = state.limits[moduleName] || 20;
+  const queryParams = new URLSearchParams();
+  queryParams.append('limit', limit);
+  
   if (moduleName === 'comments' && state.commentVideoFilter) {
-    url += `?videoId=${state.commentVideoFilter}`;
+    queryParams.append('videoId', state.commentVideoFilter);
   }
+  
+  const queryString = queryParams.toString();
+  if (queryString) {
+    url += (url.includes('?') ? '&' : '?') + queryString;
+  }
+  
   const data = await request(url);
   const payloadMap = {
     videos: data.videos || [],
@@ -511,7 +613,9 @@ async function refreshAll() {
     fetchModule('users'),
     fetchModule('comments'),
     fetchModule('exchange-products'),
-    fetchPointsUsers()
+    fetchPointsUsers(),
+    fetchSecurityPolicy(),
+    fetchSecurityAnomalies()
   ]);
   loadedModules.add('videos');
   loadedModules.add('articles');
@@ -521,6 +625,7 @@ async function refreshAll() {
   loadedModules.add('comments');
   loadedModules.add('exchange-products');
   loadedModules.add('points');
+  loadedModules.add('security-policy');
 }
 
 async function ensureModuleData(moduleName, force = false) {
@@ -558,9 +663,6 @@ function switchModule(moduleName) {
     updateDeleteSelectedButton();
     ensureModuleData('videos').catch((error) => {
       alert(error.message || '加载视频数据失败');
-    });
-    ensureModuleData('comments').catch((error) => {
-      alert(error.message || '加载评论数据失败');
     });
   }
   if (moduleName === 'points') {
@@ -901,6 +1003,7 @@ function formToPayload(moduleName) {
       payload[field.name] = values;
       continue;
     }
+
     const node = form.querySelector(`[name="${field.name}"]`);
     let value = node ? node.value.trim() : '';
     if (field.type === 'checkbox-group') {
@@ -1068,7 +1171,7 @@ function updateDeleteSelectedButton() {
     btn.style.display = state.selectedComments.length > 0 ? 'inline-block' : 'none';
   }
   const selectAllCheckbox = byId('selectAllComments');
-  if (selectAllCheckbox && state.module === 'videos') {
+  if (selectAllCheckbox && state.module === 'comments') {
     let rows = state.rows.comments || [];
     if (state.commentVideoFilter) {
       rows = rows.filter(row => row.videoId === state.commentVideoFilter);
@@ -1162,6 +1265,106 @@ async function deleteSelectedOrders() {
   state.selectedOrders = [];
   await fetchModule('orders');
   updateDeleteSelectedOrdersButton();
+}
+
+function updateDeleteSelectedVideosButton() {
+  const btn = byId('deleteSelectedVideosBtn');
+  if (btn) {
+    btn.style.display = state.selectedVideos.length > 0 ? 'inline-block' : 'none';
+  }
+  const selectAllCheckbox = byId('selectAllVideos');
+  if (selectAllCheckbox && state.module === 'videos') {
+    let rows = state.rows.videos || [];
+    selectAllCheckbox.checked = rows.length > 0 && rows.every(row => state.selectedVideos.includes(row._id));
+  }
+}
+
+function toggleVideoSelection(videoId) {
+  const index = state.selectedVideos.indexOf(videoId);
+  if (index >= 0) {
+    state.selectedVideos.splice(index, 1);
+  } else {
+    state.selectedVideos.push(videoId);
+  }
+  updateDeleteSelectedVideosButton();
+}
+
+function toggleSelectAllVideos() {
+  const selectAllCheckbox = byId('selectAllVideos');
+  let rows = state.rows.videos || [];
+  if (selectAllCheckbox && selectAllCheckbox.checked) {
+    state.selectedVideos = rows.map(row => row._id);
+  } else {
+    state.selectedVideos = [];
+  }
+  renderTable('videos');
+  updateDeleteSelectedVideosButton();
+}
+
+async function deleteSelectedVideos() {
+  if (state.selectedVideos.length === 0) {
+    alert('请先选择要删除的视频');
+    return;
+  }
+  const ok = window.confirm(`确认删除选中的 ${state.selectedVideos.length} 条视频？`);
+  if (!ok) return;
+  await request('/api/videos', {
+    method: 'DELETE',
+    body: JSON.stringify({ ids: state.selectedVideos })
+  });
+  state.selectedVideos = [];
+  await fetchModule('videos');
+  updateDeleteSelectedVideosButton();
+}
+
+function updateDeleteSelectedArticlesButton() {
+  const btn = byId('deleteSelectedArticlesBtn');
+  if (btn) {
+    btn.style.display = state.selectedArticles.length > 0 ? 'inline-block' : 'none';
+  }
+  const selectAllCheckbox = byId('selectAllArticles');
+  if (selectAllCheckbox && state.module === 'articles') {
+    let rows = state.rows.articles || [];
+    selectAllCheckbox.checked = rows.length > 0 && rows.every(row => state.selectedArticles.includes(row._id));
+  }
+}
+
+function toggleArticleSelection(articleId) {
+  const index = state.selectedArticles.indexOf(articleId);
+  if (index >= 0) {
+    state.selectedArticles.splice(index, 1);
+  } else {
+    state.selectedArticles.push(articleId);
+  }
+  updateDeleteSelectedArticlesButton();
+}
+
+function toggleSelectAllArticles() {
+  const selectAllCheckbox = byId('selectAllArticles');
+  let rows = state.rows.articles || [];
+  if (selectAllCheckbox && selectAllCheckbox.checked) {
+    state.selectedArticles = rows.map(row => row._id);
+  } else {
+    state.selectedArticles = [];
+  }
+  renderTable('articles');
+  updateDeleteSelectedArticlesButton();
+}
+
+async function deleteSelectedArticles() {
+  if (state.selectedArticles.length === 0) {
+    alert('请先选择要删除的文章');
+    return;
+  }
+  const ok = window.confirm(`确认删除选中的 ${state.selectedArticles.length} 条文章？`);
+  if (!ok) return;
+  await request('/api/articles', {
+    method: 'DELETE',
+    body: JSON.stringify({ ids: state.selectedArticles })
+  });
+  state.selectedArticles = [];
+  await fetchModule('articles');
+  updateDeleteSelectedArticlesButton();
 }
 
 async function syncFrontendData() {
@@ -1305,6 +1508,137 @@ async function saveUiConfig() {
   alert('UI 配置已保存');
 }
 
+function renderSecurityPolicy() {
+  const tbody = byId('securityPolicyTable');
+  const policy = state.securityPolicy;
+  if (!tbody || !policy || !policy.behaviors) return;
+  const behaviorEntries = Object.entries(policy.behaviors);
+  tbody.innerHTML = behaviorEntries.map(([key, config]) => `
+    <tr>
+      <td>${getBehaviorLabel(key)}</td>
+      <td><input type="checkbox" class="security-toggle" data-security-field="enabled" data-behavior="${key}" ${config.enabled ? 'checked' : ''}></td>
+      <td><input type="number" class="security-number-input" min="1" max="1440" data-security-field="windowMinutes" data-behavior="${key}" value="${Number(config.windowMinutes || 1)}"></td>
+      <td><input type="number" class="security-number-input" min="1" max="100000" data-security-field="maxRequests" data-behavior="${key}" value="${Number(config.maxRequests || 1)}"></td>
+      <td><input type="number" class="security-number-input" min="0" max="1440" data-security-field="blockMinutes" data-behavior="${key}" value="${Number(config.blockMinutes || 0)}"></td>
+      <td><input type="text" class="security-message-input" data-security-field="message" data-behavior="${key}" value="${config.message || ''}"></td>
+    </tr>
+  `).join('');
+  const windowInput = byId('securityMonitorWindowInput');
+  if (windowInput) {
+    windowInput.value = Number(policy.monitorWindowMinutes || 10);
+  }
+  const saveBtn = byId('saveSecurityPolicyBtn');
+  if (saveBtn) {
+    saveBtn.disabled = Boolean(state.securityPolicyUnsupported);
+    saveBtn.title = state.securityPolicyUnsupported ? '当前后端未部署安全策略接口，无法保存' : '';
+  }
+}
+
+function renderSecurityAnomalies() {
+  const tbody = byId('securityAnomaliesTable');
+  const rows = state.rows.securityAnomalies || [];
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">当前周期内暂无异常数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((item) => `
+    <tr>
+      <td>${formatDate(item.detectedAt)}</td>
+      <td>${getBehaviorLabel(item.action)}</td>
+      <td>${item.userId || '-'}</td>
+      <td>${item.ip || '-'}</td>
+      <td>${formatBehaviorThreshold(item)}</td>
+      <td>${Number(item.currentRequests || 0)}</td>
+      <td>${item.disposition || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+async function fetchSecurityPolicy() {
+  try {
+    const res = await request('/api/security-policy');
+    if (res && res.success) {
+      state.securityPolicyUnsupported = false;
+      state.securityPolicy = res.policy || null;
+      renderSecurityPolicy();
+    }
+  } catch (error) {
+    if (!isSecurityApiUnavailableMessage(error.message)) {
+      throw error;
+    }
+    state.securityPolicyUnsupported = true;
+    state.securityPolicy = createFallbackSecurityPolicy();
+    renderSecurityPolicy();
+    alert('当前后端未部署安全策略接口，已使用本地默认策略展示。请重启后端服务使接口生效。');
+  }
+}
+
+async function fetchSecurityAnomalies() {
+  if (state.securityPolicyUnsupported) {
+    state.rows.securityAnomalies = [];
+    renderSecurityAnomalies();
+    return;
+  }
+  const monitorWindow = Number(byId('securityMonitorWindowInput')?.value || state.securityPolicy?.monitorWindowMinutes || 10);
+  try {
+    const res = await request(`/api/security-anomalies?minutes=${Math.max(1, monitorWindow)}&limit=200`);
+    if (res && res.success) {
+      state.rows.securityAnomalies = res.anomalies || [];
+      renderSecurityAnomalies();
+    }
+  } catch (error) {
+    if (!isSecurityApiUnavailableMessage(error.message)) {
+      throw error;
+    }
+    state.securityPolicyUnsupported = true;
+    state.rows.securityAnomalies = [];
+    renderSecurityAnomalies();
+  }
+}
+
+function collectSecurityPolicyPayload() {
+  const policy = state.securityPolicy;
+  if (!policy || !policy.behaviors) {
+    throw new Error('安全策略未加载完成');
+  }
+  const monitorWindowMinutes = Math.max(1, Number(byId('securityMonitorWindowInput')?.value || 10));
+  const behaviors = {};
+  for (const key of Object.keys(policy.behaviors)) {
+    const enabledNode = document.querySelector(`input[data-security-field="enabled"][data-behavior="${key}"]`);
+    const windowNode = document.querySelector(`input[data-security-field="windowMinutes"][data-behavior="${key}"]`);
+    const maxRequestsNode = document.querySelector(`input[data-security-field="maxRequests"][data-behavior="${key}"]`);
+    const blockNode = document.querySelector(`input[data-security-field="blockMinutes"][data-behavior="${key}"]`);
+    const messageNode = document.querySelector(`input[data-security-field="message"][data-behavior="${key}"]`);
+    behaviors[key] = {
+      enabled: Boolean(enabledNode?.checked),
+      windowMinutes: Math.max(1, Number(windowNode?.value || 1)),
+      maxRequests: Math.max(1, Number(maxRequestsNode?.value || 1)),
+      blockMinutes: Math.max(0, Number(blockNode?.value || 0)),
+      message: String(messageNode?.value || '').trim()
+    };
+  }
+  return {
+    monitorWindowMinutes,
+    behaviors
+  };
+}
+
+async function saveSecurityPolicy() {
+  if (state.securityPolicyUnsupported) {
+    throw new Error('当前后端未部署安全策略接口，无法保存');
+  }
+  const payload = collectSecurityPolicyPayload();
+  const res = await request('/api/security-policy', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  if (res && res.success) {
+    state.securityPolicy = res.policy;
+    renderSecurityPolicy();
+  }
+}
+
 function bindUiEvents() {
   byId('saveUiConfigBtn').addEventListener('click', async () => {
     try {
@@ -1355,12 +1689,124 @@ function updateCommentVideoFilterOptions() {
 
 function bindEvents() {
   bindUiEvents();
+
+  const saveSecurityPolicyBtn = byId('saveSecurityPolicyBtn');
+  if (saveSecurityPolicyBtn) {
+    saveSecurityPolicyBtn.addEventListener('click', async () => {
+      try {
+        await saveSecurityPolicy();
+        await fetchSecurityAnomalies();
+        alert('安全策略已保存');
+      } catch (error) {
+        alert(error.message || '保存安全策略失败');
+      }
+    });
+  }
+
+  const refreshSecurityPolicyBtn = byId('refreshSecurityPolicyBtn');
+  if (refreshSecurityPolicyBtn) {
+    refreshSecurityPolicyBtn.addEventListener('click', async () => {
+      try {
+        await fetchSecurityPolicy();
+        await fetchSecurityAnomalies();
+        alert('安全策略已刷新');
+      } catch (error) {
+        alert(error.message || '刷新安全策略失败');
+      }
+    });
+  }
+
+  const refreshSecurityAnomaliesBtn = byId('refreshSecurityAnomaliesBtn');
+  if (refreshSecurityAnomaliesBtn) {
+    refreshSecurityAnomaliesBtn.addEventListener('click', async () => {
+      try {
+        await fetchSecurityAnomalies();
+      } catch (error) {
+        alert(error.message || '刷新异常数据失败');
+      }
+    });
+  }
+
+  const securityMonitorWindowInput = byId('securityMonitorWindowInput');
+  if (securityMonitorWindowInput) {
+    securityMonitorWindowInput.addEventListener('change', async () => {
+      try {
+        await fetchSecurityAnomalies();
+      } catch (error) {
+        alert(error.message || '加载异常数据失败');
+      }
+    });
+  }
   
   const videoSortSelect = byId('videoSortSelect');
   if (videoSortSelect) {
     videoSortSelect.addEventListener('change', (event) => {
       state.videoSort = event.target.value;
       renderTable('videos');
+    });
+  }
+  
+  const commentSortSelect = byId('commentSortSelect');
+  if (commentSortSelect) {
+    commentSortSelect.addEventListener('change', (event) => {
+      state.commentSort = event.target.value;
+      renderTable('comments');
+    });
+  }
+  
+  const videosLimitSelect = byId('videosLimitSelect');
+  if (videosLimitSelect) {
+    videosLimitSelect.addEventListener('change', async (event) => {
+      state.limits.videos = parseInt(event.target.value, 10);
+      loadedModules.delete('videos');
+      await ensureModuleData('videos', true);
+    });
+  }
+  
+  const commentsLimitSelect = byId('commentsLimitSelect');
+  if (commentsLimitSelect) {
+    commentsLimitSelect.addEventListener('change', async (event) => {
+      state.limits.comments = parseInt(event.target.value, 10);
+      loadedModules.delete('comments');
+      await ensureModuleData('comments', true);
+    });
+  }
+  
+  const articlesLimitSelect = byId('articlesLimitSelect');
+  if (articlesLimitSelect) {
+    articlesLimitSelect.addEventListener('change', async (event) => {
+      state.limits.articles = parseInt(event.target.value, 10);
+      loadedModules.delete('articles');
+      await ensureModuleData('articles', true);
+    });
+  }
+  
+  const ordersLimitSelect = byId('ordersLimitSelect');
+  if (ordersLimitSelect) {
+    ordersLimitSelect.addEventListener('change', async (event) => {
+      state.limits.orders = parseInt(event.target.value, 10);
+      loadedModules.delete('orders');
+      await ensureModuleData('orders', true);
+    });
+  }
+  
+  const usersLimitSelect = byId('usersLimitSelect');
+  if (usersLimitSelect) {
+    usersLimitSelect.addEventListener('change', async (event) => {
+      state.limits.users = parseInt(event.target.value, 10);
+      loadedModules.delete('users');
+      await ensureModuleData('users', true);
+    });
+  }
+  
+  const pointsLimitSelect = byId('pointsLimitSelect');
+  if (pointsLimitSelect) {
+    pointsLimitSelect.addEventListener('change', async (event) => {
+      state.limits.points = parseInt(event.target.value, 10);
+      await fetchPointsUsers();
+      if (currentPointsTab === 'redemptions') {
+        await fetchPointsRedemptions();
+      }
     });
   }
   const orderStatusFilter = byId('orderStatusFilter');
@@ -1421,6 +1867,38 @@ function bindEvents() {
     });
   }
 
+  const selectAllVideosCheckbox = byId('selectAllVideos');
+  if (selectAllVideosCheckbox) {
+    selectAllVideosCheckbox.addEventListener('change', toggleSelectAllVideos);
+  }
+
+  const deleteSelectedVideosBtn = byId('deleteSelectedVideosBtn');
+  if (deleteSelectedVideosBtn) {
+    deleteSelectedVideosBtn.addEventListener('click', async () => {
+      try {
+        await deleteSelectedVideos();
+      } catch (error) {
+        alert(error.message || '批量删除失败');
+      }
+    });
+  }
+
+  const selectAllArticlesCheckbox = byId('selectAllArticles');
+  if (selectAllArticlesCheckbox) {
+    selectAllArticlesCheckbox.addEventListener('change', toggleSelectAllArticles);
+  }
+
+  const deleteSelectedArticlesBtn = byId('deleteSelectedArticlesBtn');
+  if (deleteSelectedArticlesBtn) {
+    deleteSelectedArticlesBtn.addEventListener('click', async () => {
+      try {
+        await deleteSelectedArticles();
+      } catch (error) {
+        alert(error.message || '批量删除失败');
+      }
+    });
+  }
+
   document.body.addEventListener('change', (event) => {
     const target = event.target;
     if (target.classList.contains('comment-checkbox')) {
@@ -1450,6 +1928,24 @@ function bindEvents() {
         selectAllCheckbox.checked = rows.length > 0 && rows.every(row => state.selectedOrders.includes(row._id));
       }
     }
+    if (target.classList.contains('video-checkbox')) {
+      const videoId = target.dataset.id;
+      toggleVideoSelection(videoId);
+      const selectAllCheckbox = byId('selectAllVideos');
+      let rows = state.rows.videos || [];
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = rows.length > 0 && rows.every(row => state.selectedVideos.includes(row._id));
+      }
+    }
+    if (target.classList.contains('article-checkbox')) {
+      const articleId = target.dataset.id;
+      toggleArticleSelection(articleId);
+      const selectAllCheckbox = byId('selectAllArticles');
+      let rows = state.rows.articles || [];
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = rows.length > 0 && rows.every(row => state.selectedArticles.includes(row._id));
+      }
+    }
   }, true);
   
   document.body.addEventListener('click', async (event) => {
@@ -1458,17 +1954,14 @@ function bindEvents() {
       const videoId = target.dataset.videoId;
       state.commentVideoFilter = videoId;
       state.selectedComments = [];
-      await switchModule('videos');
+      await switchModule('comments');
       const select = byId('commentVideoFilter');
       if (select) {
         select.value = videoId;
       }
       await fetchModule('comments');
       updateDeleteSelectedButton();
-      const panel = byId('videoCommentsPanel');
-      if (panel) {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, true);
 
@@ -1788,9 +2281,10 @@ let currentPointsAdjustUserId = null;
 let currentPointsConsumeHistoryUserId = null;
 
 async function fetchPointsUsers() {
-  const data = await request('/api/points/users');
+  const limit = state.limits.points || 20;
+  const data = await request(`/api/points/users?limit=${limit}`);
   if (data && data.success) {
-    state.rows.points = data.users;
+    state.rows.points = data.users || [];
     renderPointsTable();
   }
 }
@@ -1944,9 +2438,10 @@ function switchPointsTab(tab) {
 }
 
 async function fetchPointsRedemptions() {
-  const data = await request('/api/points/redemptions');
+  const limit = state.limits.points || 20;
+  const data = await request(`/api/points/redemptions?limit=${limit}`);
   if (data && data.success) {
-    state.rows.pointsRedemptions = data.redemptions;
+    state.rows.pointsRedemptions = data.redemptions || [];
     renderPointsRedemptionsTable();
   }
 }
@@ -1996,8 +2491,52 @@ function renderPointsRedemptionsTable() {
   }).join('');
 }
 
+function initOrderStatusFilter() {
+  const select = byId('orderStatusFilter');
+  if (!select) return;
+  
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">全部</option>';
+  
+  Object.entries(ORDER_STATUS_MAP).forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    select.appendChild(option);
+  });
+  
+  select.value = currentValue;
+}
+
+function initOrderShippingStatusFilter() {
+  const select = byId('orderShippingStatusFilter');
+  if (!select) return;
+  
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">全部</option>';
+  
+  Object.entries(SHIPPING_STATUS_MAP).forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    select.appendChild(option);
+  });
+  
+  select.value = currentValue;
+}
+
 async function init() {
   bindEvents();
+  initOrderStatusFilter();
+  initOrderShippingStatusFilter();
+  
+  const orderLogsBtn = document.getElementById('orderLogsBtn');
+  if (orderLogsBtn) {
+    orderLogsBtn.addEventListener('click', () => {
+      window.open('order-logs.html', 'orderLogs', 'width=1400,height=900,top=50,left=50,scrollbars=yes,resizable=yes');
+    });
+  }
+  
   switchModule('videos');
   try {
     await ensureModuleData('videos');

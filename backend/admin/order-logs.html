@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单操作日志</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            font-size: 12px;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            font-size: 18px;
+            color: #1890ff;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .filter-bar label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .filter-bar select {
+            padding: 6px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .filter-bar select:focus {
+            outline: none;
+            border-color: #1890ff;
+        }
+        
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 750px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        
+        th {
+            background: #fafafa;
+            font-weight: 500;
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+        
+        .status {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+        
+        .status.admin {
+            background: #e6f7ff;
+            color: #1890ff;
+        }
+        
+        .status.user {
+            background: #f6ffed;
+            color: #52c41a;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>订单操作日志</h1>
+        
+        <div class="filter-bar">
+            <label for="limitSelect">显示条数：</label>
+            <select id="limitSelect">
+                <option value="20" selected>20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+                <option value="200">200条</option>
+                <option value="500">500条</option>
+            </select>
+        </div>
+        
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">订单号</th>
+                        <th style="width: 15%;">操作类型</th>
+                        <th style="width: 10%;">操作人</th>
+                        <th style="width: 35%;">操作描述</th>
+                        <th style="width: 20%;">操作时间</th>
+                    </tr>
+                </thead>
+                <tbody id="orderLogsTable">
+                    <tr>
+                        <td colspan="5" class="loading">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="actions">
+            <button class="btn" onclick="window.location.href='backend-console.html'">返回控制台</button>
+        </div>
+    </div>
+    
+    <script>
+        async function loadOrderLogs() {
+            try {
+                const limit = document.getElementById('limitSelect').value;
+                const response = await fetch(`/api/orders/all/logs?limit=${limit}`);
+                const data = await response.json();
+                
+                if (data && data.success) {
+                    renderOrderLogsTable(data.logs || []);
+                } else {
+                    showError('加载失败');
+                }
+            } catch (error) {
+                showError('网络错误');
+            }
+        }
+        
+        function initLimitSelect() {
+            const limitSelect = document.getElementById('limitSelect');
+            limitSelect.addEventListener('change', () => {
+                loadOrderLogs();
+            });
+        }
+        
+        function renderOrderLogsTable(logs) {
+            const tbody = document.getElementById('orderLogsTable');
+            
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无操作日志</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = logs.map(log => {
+                return `
+                    <tr>
+                        <td>${log.orderNumber}</td>
+                        <td>${log.action}</td>
+                        <td><span class="status ${log.operator === 'admin' ? 'admin' : 'user'}">${log.operator === 'admin' ? '管理员' : '用户'}</span></td>
+                        <td>${log.description || '-'}</td>
+                        <td>${formatTime(log.createdAt)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function formatTime(timeString) {
+            if (!timeString) return '-';
+            const date = new Date(timeString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        function showError(message) {
+            const tbody = document.getElementById('orderLogsTable');
+            tbody.innerHTML = `<tr><td colspan="5" class="empty">${message}</td></tr>`;
+        }
+        
+        // 页面加载时加载数据
+        window.onload = () => {
+            initLimitSelect();
+            loadOrderLogs();
+        };
+    </script>
+</body>
+</html>

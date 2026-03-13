@@ -2,7 +2,7 @@ const app = getApp();
 
 Page({
   data: {
-    activeTab: 'all',
+    activeTab: 'cancelled',
     orders: [],
     allOrders: [],
     showEditAddressDialog: false,
@@ -17,9 +17,13 @@ Page({
     }
   },
   countdownInterval: null,
+  refundPollingTimer: null,
   ORDER_EXPIRE_TIME: 30 * 60 * 1000,
 
-  onLoad() {
+  onLoad(options) {
+    if (options.tab) {
+      this.setData({ activeTab: options.tab === 'all' ? 'cancelled' : options.tab });
+    }
     this.loadOrders();
   },
 
@@ -30,20 +34,23 @@ Page({
 
   onHide() {
     this.stopCountdown();
+    this.stopRefundPolling();
   },
 
   onUnload() {
     this.stopCountdown();
+    this.stopRefundPolling();
   },
 
   loadOrders() {
     const userId = wx.getStorageSync('userId') || 'wx_user_001';
     const statusMap = {
-      'pending': '待付款',
-      'paid': '待发货',
-      'shipping': '待收货',
-      'delivered': '已完成',
-      'cancelled': '已取消'
+      'pending': '待支付',
+      'paid': '已支付',
+      'cancelled': '已取消',
+      'refund_pending': '售后中',
+      'refunded': '已退款',
+      'delivered': '已完成'
     };
 
     app.request({
@@ -51,18 +58,17 @@ Page({
     }).then((res) => {
       if (res.success && Array.isArray(res.orders)) {
         const orderList = res.orders.map((order) => {
-          let statusText = statusMap[order.status] || order.status;
-          
-          if (order.status === 'paid' && order.shippingStatus === 'shipped') {
-            statusText = '待收货';
-          }
-          
+          const statusText = order.status === 'paid' && order.shippingStatus === 'shipped'
+            ? (order.trackingNumber || '已发货')
+            : (statusMap[order.status] || order.status);
           return {
             ...order,
             id: order._id,
             createTime: this.formatTime(order.createdAt),
-            statusText: statusText,
-            shippingStatusText: order.shippingStatus === 'shipped' ? '已发货' : '未发货',
+            statusText,
+            shippingStatusText: order.status === 'refund_pending'
+              ? '退款申请中'
+              : (order.shippingStatus === 'shipped' ? '已发货' : '未发货'),
             shippedAt: order.shippedAt ? this.formatTime(order.shippedAt) : (order.shippingStatus === 'shipped' && order.updatedAt ? this.formatTime(order.updatedAt) : ''),
             countdownText: order.status === 'pending' ? this.getCountdownText(order.createdAt) : '',
             expireAt: order.status === 'pending' ? (new Date(order.createdAt).getTime() + this.ORDER_EXPIRE_TIME) : null
@@ -86,7 +92,12 @@ Page({
     const orderList = orders.map(order => ({
       ...order,
       id: order.id,
-      statusText: statusMap[order.status] || order.status,
+      statusText: order.status === 'paid' && order.shippingStatus === 'shipped'
+        ? (order.trackingNumber || '已发货')
+        : (statusMap[order.status] || order.status),
+      shippingStatusText: order.status === 'refund_pending'
+        ? '退款申请中'
+        : (order.shippingStatus === 'shipped' ? '已发货' : '未发货'),
       createTime: this.formatTime(order.createTime),
       shippedAt: order.shippedAt ? this.formatTime(order.shippedAt) : (order.shippingStatus === 'shipped' && order.updatedAt ? this.formatTime(order.updatedAt) : ''),
       countdownText: order.status === 'pending' ? this.getCountdownText(order.createdAt || order.createTime) : '',
@@ -128,6 +139,13 @@ Page({
     }
   },
 
+  stopRefundPolling() {
+    if (this.refundPollingTimer) {
+      clearInterval(this.refundPollingTimer);
+      this.refundPollingTimer = null;
+    }
+  },
+
   updateCountdowns() {
     const updatedOrders = this.data.allOrders.map(order => {
       if (order.status === 'pending' && order.expireAt) {
@@ -150,12 +168,14 @@ Page({
     
     this.setData({
       allOrders: updatedOrders,
-      orders: this.data.activeTab === 'all' ? updatedOrders : this.data.orders
+      orders: this.data.orders
     });
     
-    if (this.data.activeTab !== 'all') {
+    if (this.data.activeTab !== 'cancelled') {
       this.switchTab({ currentTarget: { dataset: { tab: this.data.activeTab } } });
+      return;
     }
+    this.switchTab({ currentTarget: { dataset: { tab: 'cancelled' } } });
   },
 
   cancelOrderAutomatically(orderId) {
@@ -191,27 +211,38 @@ Page({
   },
 
   switchTab(e) {
-    const tab = e.currentTarget.dataset.tab;
+    const tab = e.currentTarget ? e.currentTarget.dataset.tab : e;
     this.setData({
       activeTab: tab
     });
 
-    if (tab === 'all') {
+    if (tab === 'cancelled') {
+      const filteredOrders = this.data.allOrders.filter(order => order.status === 'cancelled');
       this.setData({
-        orders: this.data.allOrders
+        orders: filteredOrders
       });
-    } else if (tab === 'shipping') {
-      const filteredOrders = this.data.allOrders.filter(order => 
-        order.status === 'shipping' || 
-        (order.status === 'paid' && order.shippingStatus === 'shipped')
-      );
+    } else if (tab === 'pending') {
+      const filteredOrders = this.data.allOrders.filter(order => order.status === 'pending');
       this.setData({
         orders: filteredOrders
       });
     } else if (tab === 'paid') {
-      const filteredOrders = this.data.allOrders.filter(order => 
-        order.status === 'paid' && order.shippingStatus !== 'shipped'
-      );
+      const filteredOrders = this.data.allOrders.filter(order => order.status === 'paid' && order.shippingStatus !== 'shipped');
+      this.setData({
+        orders: filteredOrders
+      });
+    } else if (tab === 'shipped') {
+      const filteredOrders = this.data.allOrders.filter(order => order.shippingStatus === 'shipped' && order.status !== 'refunded' && order.status !== 'delivered' && order.status !== 'refund_pending');
+      this.setData({
+        orders: filteredOrders
+      });
+    } else if (tab === 'refund') {
+      const filteredOrders = this.data.allOrders.filter(order => order.status === 'refund_pending');
+      this.setData({
+        orders: filteredOrders
+      });
+    } else if (tab === 'completed') {
+      const filteredOrders = this.data.allOrders.filter(order => order.status === 'refunded' || order.status === 'delivered');
       this.setData({
         orders: filteredOrders
       });
@@ -306,43 +337,88 @@ Page({
     });
   },
 
-  confirmReceive(e) {
+  requestRefund(e) {
+    const id = e.currentTarget.dataset.id;
+    const orderNumber = e.currentTarget.dataset.orderNumber || '';
+    const order = this.data.allOrders.find(o => o.id == id);
+    if (!order || order.status !== 'paid') {
+      wx.showToast({
+        title: '当前订单不可退款',
+        icon: 'none'
+      });
+      return;
+    }
+    const hasTrackingNumber = String(order.trackingNumber || '').trim().length > 0;
+    const shouldAutoRefund = order.shippingStatus === 'unshipped' && !hasTrackingNumber;
     wx.showModal({
-      title: '提示',
-      content: '确认已收到商品？',
+      title: '申请退款',
+      content: shouldAutoRefund
+        ? `确认对订单 ${orderNumber} 发起微信退款？`
+        : `确认提交订单 ${orderNumber} 的退款申请？`,
+      confirmText: '退款',
       success: (res) => {
-        if (res.confirm) {
-          const id = e.currentTarget.dataset.id;
-          app.request({
-            url: `/api/orders/${id}`,
-            method: 'PUT',
-            data: {
-              status: 'delivered'
+        if (!res.confirm) return;
+        wx.showLoading({ title: shouldAutoRefund ? '退款处理中' : '提交申请中' });
+        app.request({
+          url: `/api/orders/${id}/refund`,
+          method: 'POST',
+          data: {
+            channel: 'wechat'
+          }
+        }).then((result) => {
+          wx.hideLoading();
+          if (result && result.success) {
+            wx.showToast({
+              title: result.message || (shouldAutoRefund ? '退款处理中' : '已提交退款申请'),
+              icon: 'success'
+            });
+            this.loadOrders();
+            if (shouldAutoRefund) {
+              this.startRefundPolling(id);
             }
-          }).then(() => {
-            this.loadOrders();
-            wx.showToast({
-              title: '确认收货成功',
-              icon: 'success'
-            });
-          }).catch(() => {
-            const orders = app.globalData.orders.map(order => {
-              if (order.id == id) {
-                return { ...order, status: 'delivered', receiveTime: Date.now() };
-              }
-              return order;
-            });
-            app.globalData.orders = orders;
-            app.saveOrders();
-            this.loadOrders();
-            wx.showToast({
-              title: '确认收货成功',
-              icon: 'success'
-            });
+            return;
+          }
+          wx.showToast({
+            title: (result && result.message) || '退款失败',
+            icon: 'none'
           });
-        }
+        }).catch((error) => {
+          wx.hideLoading();
+          wx.showToast({
+            title: (error && error.message) || '退款失败',
+            icon: 'none'
+          });
+        });
       }
     });
+  },
+
+  startRefundPolling(orderId) {
+    this.stopRefundPolling();
+    let pollingCount = 0;
+    this.refundPollingTimer = setInterval(() => {
+      pollingCount += 1;
+      app.request({
+        url: `/api/orders/${orderId}`
+      }).then((res) => {
+        if (!res || !res.success || !res.order) return;
+        if (res.order.status === 'refunded') {
+          this.stopRefundPolling();
+          this.loadOrders();
+          return;
+        }
+        if (res.order.refundStatus === 'failed') {
+          this.stopRefundPolling();
+          wx.showToast({
+            title: res.order.refundFailedReason || '退款失败',
+            icon: 'none'
+          });
+        }
+      }).catch(() => {});
+      if (pollingCount >= 30) {
+        this.stopRefundPolling();
+      }
+    }, 2000);
   },
 
   editOrderAddress(e) {

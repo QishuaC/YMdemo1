@@ -1,0 +1,118 @@
+<view class="container">
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'order' ? 'active' : ''}}" bindtap="switchTab" data-tab="order">
+      订单客服
+    </view>
+    <view class="tab-item {{activeTab === 'contact' ? 'active' : ''}}" bindtap="switchTab" data-tab="contact">
+      联系我们
+    </view>
+    <view class="tab-item {{activeTab === 'feedback' ? 'active' : ''}}" bindtap="switchTab" data-tab="feedback">
+      BUG反馈
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="order-content" wx:if="{{activeTab === 'order'}}">
+      <view class="card">
+        <view class="card-title">售后服务</view>
+        <view class="service-item" wx:for="{{afterSaleServices}}" wx:key="id" bindtap="handleServiceClick" data-id="{{item.id}}">
+          <text class="service-icon">{{item.icon}}</text>
+          <view class="service-text">
+            <text class="service-name">{{item.name}}</text>
+            <text class="service-desc">{{item.desc}}</text>
+          </view>
+          <text class="service-arrow">›</text>
+        </view>
+      </view>
+
+      <view class="card">
+        <view class="card-title">常见问题</view>
+        <view class="faq-item" wx:for="{{orderFaqs}}" wx:key="index" bindtap="toggleFaq" data-index="{{index}}" data-type="order">
+          <view class="faq-question">
+            <text class="question-text">{{item.question}}</text>
+            <text class="arrow {{item.open ? 'open' : ''}}">▼</text>
+          </view>
+          <view class="faq-answer {{item.open ? 'open' : ''}}">
+            <text>{{item.answer}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="contact-content" wx:if="{{activeTab === 'contact'}}">
+      <view class="card">
+        <view class="card-title">客服微信</view>
+        <image class="qr-code" src="{{qrCodeUrl || 'https://picsum.photos/200/200?random=1'}}" mode="aspectFit"></image>
+        <text class="qr-hint">扫码添加客服微信</text>
+      </view>
+
+      <view class="card">
+        <view class="card-title">联系方式</view>
+        <view class="contact-item" bindtap="makePhoneCall">
+          <text class="contact-icon">📞</text>
+          <view class="contact-text">
+            <text class="contact-label">客服电话</text>
+            <text class="contact-value">400-123-4567</text>
+          </view>
+          <text class="contact-action">拨打</text>
+        </view>
+        <view class="contact-item">
+          <text class="contact-icon">📧</text>
+          <view class="contact-text">
+            <text class="contact-label">客服邮箱</text>
+            <text class="contact-value">service@yimen.com</text>
+          </view>
+        </view>
+        <view class="contact-item">
+          <text class="contact-icon">🕐</text>
+          <view class="contact-text">
+            <text class="contact-label">工作时间</text>
+            <text class="contact-value">周一至周日 9:00-18:00</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="feedback-content" wx:if="{{activeTab === 'feedback'}}">
+      <view class="card">
+        <view class="form-item">
+          <text class="form-label">问题类型</text>
+          <picker mode="selector" range="{{bugTypes}}" value="{{bugTypeIndex}}" bindchange="onBugTypeChange">
+            <view class="picker">
+              {{bugTypes[bugTypeIndex] || '请选择问题类型'}}
+            </view>
+          </picker>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">问题描述</text>
+          <textarea class="textarea" placeholder="请详细描述您遇到的问题..." value="{{description}}" bindinput="onDescriptionInput" maxlength="500"></textarea>
+          <text class="char-count">{{description.length}}/500</text>
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">联系方式（选填）</text>
+          <input class="input" placeholder="方便我们联系您" value="{{contact}}" bindinput="onContactInput"></input>
+        </view>
+
+        <button class="submit-btn" bindtap="submitFeedback" disabled="{{submitting}}">
+          {{submitting ? '提交中...' : '提交反馈'}}
+        </button>
+      </view>
+
+      <view class="card" wx:if="{{feedbackList.length > 0}}">
+        <view class="card-title">历史反馈</view>
+        <view class="feedback-item" wx:for="{{feedbackList}}" wx:key="id">
+          <view class="feedback-header">
+            <text class="feedback-type">{{item.type}}</text>
+            <text class="feedback-time">{{item.time}}</text>
+          </view>
+          <text class="feedback-desc">{{item.description}}</text>
+          <view class="feedback-status {{item.status === 'pending' ? 'pending' : 'resolved'}}">
+            {{item.status === 'pending' ? '待处理' : '已处理'}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,18 @@
+{
+  "userId": "wx_user_001",
+  "oldNickname": "其思华1",
+  "temporaryNewNickname": "其思华1_实时对比235512",
+  "beforeNicknameSet": [
+    "其思华",
+    "华"
+  ],
+  "afterNicknameSet": [
+    "其思华",
+    "华"
+  ],
+  "beforeCount": 15,
+  "afterCount": 15,
+  "beforeImage": "C:\\Users\\Qishua\\Desktop\\Demo\\Demo2.1\\outputs\\comment-name-before.png",
+  "afterImage": "C:\\Users\\Qishua\\Desktop\\Demo\\Demo2.1\\outputs\\comment-name-after.png",
+  "generatedAt": "2026-03-13T23:55:13.142580"
+}

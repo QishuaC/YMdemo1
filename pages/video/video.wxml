@@ -78,6 +78,7 @@
     show="{{showCommentPopup}}" 
     video-id="{{currentVideoId}}"
     comment-count="{{currentCommentCount}}"
+    is-member="{{isMember}}"
     bind:close="onCommentClose"
     bind:commentadded="onCommentAdded"
     bind:commentcountupdate="onCommentCountUpdate"

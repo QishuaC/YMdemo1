@@ -75,7 +75,7 @@
         <text class="points-value">+{{earnedPoints}}</text>
       </view>
       <view class="modal-buttons">
-        <button class="modal-btn secondary" bindtap="goBack">返回义闻</button>
+        <button class="modal-btn secondary" bindtap="goBack">返回商城页</button>
         <button class="modal-btn primary" bindtap="goToOrder">查看订单</button>
       </view>
     </view>

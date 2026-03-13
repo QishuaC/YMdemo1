@@ -113,6 +113,15 @@
   color: #666;
 }
 
+.comment-user-name.colorful {
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+  background-size: 400% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rainbowFlow 3s linear infinite;
+}
+
 .comment-text {
   font-size: 30rpx;
   color: #333;
@@ -167,6 +176,12 @@
   font-weight: 500;
 }
 
+.action-delete {
+  font-size: 26rpx;
+  color: #ff4d4f;
+  padding: 8rpx 12rpx;
+}
+
 .replies {
   margin-top: 20rpx;
   padding: 20rpx;
@@ -209,6 +224,24 @@
 .reply-user-name {
   font-size: 26rpx;
   color: #666;
+}
+
+.reply-user-name.colorful {
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+  background-size: 400% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rainbowFlow 3s linear infinite;
+}
+
+@keyframes rainbowFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 400% 50%;
+  }
 }
 
 .reply-text {

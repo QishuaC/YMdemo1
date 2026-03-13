@@ -13,7 +13,8 @@ Page({
     videos: [],
     showCommentPopup: false,
     currentVideoId: '',
-    currentCommentCount: 0
+    currentCommentCount: 0,
+    isMember: false
   },
 
   onLoad() {
@@ -34,6 +35,9 @@ Page({
     if (tabBar) {
       tabBar.setData({ selected: 1 });
     }
+    this.setData({
+      isMember: app.globalData.isMember || false
+    });
     try {
       const videos = await this.dataService.fetchVideos();
       if (videos && videos.length > 0) {

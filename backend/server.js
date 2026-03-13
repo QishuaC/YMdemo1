@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +17,7 @@ const { mockArticles, mockVideos, mockProducts, mockComments } = require('../dat
 const RATE_LIMIT_WINDOW = 60000;
 const RATE_LIMIT_MAX = 100;
 const rateLimitStore = new Map();
+const behaviorLimitStore = new Map();
 
 function rateLimitMiddleware(req, res, next) {
   const clientId = req.ip || 'anonymous';
@@ -37,6 +38,176 @@ function rateLimitMiddleware(req, res, next) {
   requests.push(now);
   rateLimitStore.set(clientId, requests);
   next();
+}
+
+function getDefaultSecurityPolicy() {
+  return {
+    monitorWindowMinutes: 10,
+    behaviors: {
+      comment: {
+        enabled: true,
+        windowMinutes: 10,
+        maxRequests: 20,
+        blockMinutes: 10,
+        message: '评论过于频繁，请稍后再试',
+        autoDeleteComments: true
+      },
+      video_like: {
+        enabled: true,
+        windowMinutes: 5,
+        maxRequests: 80,
+        blockMinutes: 5,
+        message: '点赞操作过于频繁，请稍后再试'
+      },
+      comment_like: {
+        enabled: true,
+        windowMinutes: 5,
+        maxRequests: 80,
+        blockMinutes: 5,
+        message: '点赞操作过于频繁，请稍后再试'
+      },
+      order_submit: {
+        enabled: true,
+        windowMinutes: 10,
+        maxRequests: 10,
+        blockMinutes: 15,
+        message: '订单提交过于频繁，请稍后再试'
+      },
+      forward: {
+        enabled: true,
+        windowMinutes: 5,
+        maxRequests: 120,
+        blockMinutes: 3,
+        message: '转发操作过于频繁，请稍后再试'
+      }
+    }
+  };
+}
+
+function ensureSecurityPolicy(db) {
+  const defaultPolicy = getDefaultSecurityPolicy();
+  const current = db.securityPolicy || {};
+  const nextPolicy = {
+    monitorWindowMinutes: toInt(current.monitorWindowMinutes, defaultPolicy.monitorWindowMinutes),
+    behaviors: {}
+  };
+  Object.keys(defaultPolicy.behaviors).forEach((actionKey) => {
+    const currentBehavior = current.behaviors?.[actionKey] || {};
+    const defaultBehavior = defaultPolicy.behaviors[actionKey];
+    nextPolicy.behaviors[actionKey] = {
+      ...defaultBehavior,
+      ...currentBehavior,
+      enabled: currentBehavior.enabled === undefined ? defaultBehavior.enabled : Boolean(currentBehavior.enabled),
+      windowMinutes: Math.max(1, toInt(currentBehavior.windowMinutes, defaultBehavior.windowMinutes)),
+      maxRequests: Math.max(1, toInt(currentBehavior.maxRequests, defaultBehavior.maxRequests)),
+      blockMinutes: Math.max(0, toInt(currentBehavior.blockMinutes, defaultBehavior.blockMinutes)),
+      message: sanitizeString(currentBehavior.message || defaultBehavior.message, 120)
+    };
+  });
+  db.securityPolicy = nextPolicy;
+  if (!Array.isArray(db.securityAnomalies)) {
+    db.securityAnomalies = [];
+  }
+  return nextPolicy;
+}
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const first = String(forwarded).split(',')[0].trim();
+    if (first) return first;
+  }
+  const realIp = req.headers['x-real-ip'];
+  if (realIp) {
+    return String(realIp).trim();
+  }
+  return String(req.ip || req.connection?.remoteAddress || 'unknown').replace('::ffff:', '');
+}
+
+function resolveActorId(req) {
+  const headerUserId = req.header('x-user-id');
+  const bodyUserId = req.body?.userId;
+  return String(headerUserId || bodyUserId || 'anonymous');
+}
+
+function deleteRecentCommentsForActor(db, actorId, ip, windowStartTs) {
+  const initialLength = db.comments.length;
+  const affectedVideoIds = new Set();
+  db.comments = db.comments.filter((comment) => {
+    const createdAtTs = new Date(comment.createdAt).getTime();
+    const inWindow = Number.isFinite(createdAtTs) && createdAtTs >= windowStartTs;
+    const sameActor = String(comment.userId || '') === String(actorId);
+    const sameIp = ip && comment.sourceIp && comment.sourceIp === ip;
+    const shouldDelete = inWindow && (sameActor || sameIp);
+    if (shouldDelete) {
+      affectedVideoIds.add(comment.videoId);
+      return false;
+    }
+    return true;
+  });
+  affectedVideoIds.forEach((videoId) => refreshVideoCommentCount(db, videoId));
+  return initialLength - db.comments.length;
+}
+
+function enforceBehaviorSecurity(req, res, db, actionKey, options = {}) {
+  const policy = ensureSecurityPolicy(db);
+  const behaviorPolicy = policy.behaviors[actionKey];
+  if (!behaviorPolicy || !behaviorPolicy.enabled) {
+    return { blocked: false };
+  }
+  const actorId = String(options.userId || resolveActorId(req));
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const windowMs = Math.max(1, toInt(behaviorPolicy.windowMinutes, 1)) * 60 * 1000;
+  const blockMs = Math.max(0, toInt(behaviorPolicy.blockMinutes, 0)) * 60 * 1000;
+  const maxRequests = Math.max(1, toInt(behaviorPolicy.maxRequests, 1));
+  const key = `${actionKey}:${actorId}:${ip}`;
+  const record = behaviorLimitStore.get(key) || { timestamps: [], blockedUntil: 0 };
+  record.timestamps = record.timestamps.filter((ts) => ts > now - windowMs);
+  if (record.blockedUntil > now) {
+    const remainingSeconds = Math.ceil((record.blockedUntil - now) / 1000);
+    res.status(429).json({
+      success: false,
+      message: `${behaviorPolicy.message}（请在 ${remainingSeconds} 秒后重试）`
+    });
+    return { blocked: true };
+  }
+  if (record.timestamps.length >= maxRequests) {
+    let deletedCount = 0;
+    const windowStartTs = now - windowMs;
+    if (actionKey === 'comment' && behaviorPolicy.autoDeleteComments) {
+      deletedCount = deleteRecentCommentsForActor(db, actorId, ip, windowStartTs);
+    }
+    if (blockMs > 0) {
+      record.blockedUntil = now + blockMs;
+    }
+    behaviorLimitStore.set(key, record);
+    const anomaly = {
+      _id: createId('security_anomaly'),
+      action: actionKey,
+      userId: actorId,
+      ip,
+      detectedAt: new Date(now).toISOString(),
+      windowMinutes: Math.max(1, toInt(behaviorPolicy.windowMinutes, 1)),
+      maxRequests,
+      currentRequests: record.timestamps.length + 1,
+      disposition: deletedCount > 0 ? `已拦截并删除${deletedCount}条评论` : '已拦截并记录'
+    };
+    db.securityAnomalies.unshift(anomaly);
+    if (db.securityAnomalies.length > 2000) {
+      db.securityAnomalies = db.securityAnomalies.slice(0, 2000);
+    }
+    writeDb(db);
+    res.status(429).json({
+      success: false,
+      message: behaviorPolicy.message,
+      anomaly
+    });
+    return { blocked: true };
+  }
+  record.timestamps.push(now);
+  behaviorLimitStore.set(key, record);
+  return { blocked: false };
 }
 
 function validateRequiredFields(fields) {
@@ -427,7 +598,8 @@ function createInitialDb() {
         avatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
         points: 0,
         checkIns: [],
-        pointsHistory: []
+        pointsHistory: [],
+        nicknameColor: ''
       }
     ],
     admins: [
@@ -444,6 +616,8 @@ function createInitialDb() {
     orders: [],
     exchangeProducts: [],
     redemptions: [],
+    securityPolicy: getDefaultSecurityPolicy(),
+    securityAnomalies: [],
     uiConfig: {
       banner: 'https://picsum.photos/750/300?random=100',
       tabBar: [
@@ -689,7 +863,8 @@ function buildCommentTree(db, videoId) {
     return {
       _id: userId,
       nickname: user?.nickname || fallbackNickname || '微信用户',
-      avatar: user?.avatar || fallbackAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
+      avatar: user?.avatar || fallbackAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
+      nicknameColor: user?.nicknameColor || ''
     };
   };
   
@@ -821,6 +996,11 @@ const uploadImage = createUploadMiddleware({
   maxSize: 20 * 1024 * 1024,
   allowedMimePattern: /^image\//i
 });
+
+const uploadAvatar = createUploadMiddleware({
+  maxSize: 5 * 1024 * 1024,
+  allowedMimePattern: /^image\//i
+});
 const uploadVideo = createUploadMiddleware({
   maxSize: 500 * 1024 * 1024,
   allowedMimePattern: /^video\//i,
@@ -890,6 +1070,7 @@ app.get('/api/checkin/status', (req, res) => {
 app.post('/api/checkin', (req, res) => {
   const db = readDbWithCache();
   const userId = req.header('x-user-id') || 'wx_user_001';
+  const isMember = Boolean(req.body.isMember);
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = getMonthKey(today);
   const now = new Date().toISOString();
@@ -933,17 +1114,21 @@ app.post('/api/checkin', (req, res) => {
     return;
   }
   
+  const basePoints = 10;
+  const earnedPoints = isMember ? basePoints * 2 : basePoints;
+  const description = isMember ? '每日签到（会员双倍）' : '每日签到';
+  
   user.checkIns.push({
     date: today,
-    points: 1,
+    points: earnedPoints,
     createdAt: now
   });
-  user.points += 1;
+  user.points += earnedPoints;
   user.pointsHistory.unshift({
     _id: createId('point'),
     type: 'earn',
-    amount: 1,
-    description: '每日签到',
+    amount: earnedPoints,
+    description: description,
     createdAt: now
   });
   
@@ -953,12 +1138,13 @@ app.post('/api/checkin', (req, res) => {
   
   res.json({
     success: true,
-    message: '签到成功，获得1积分',
+    message: `签到成功，获得${earnedPoints}积分`,
     data: {
       hasCheckedIn: true,
       points: user.points,
       totalCheckIns: user.checkIns.length,
-      monthlyCheckInCount: monthlyCheckIns.length
+      monthlyCheckInCount: monthlyCheckIns.length,
+      earnedPoints: earnedPoints
     }
   });
 });
@@ -1003,7 +1189,8 @@ app.post('/api/auth/login', (req, res) => {
       checkIns: [],
       pointsHistory: [],
       addresses: [],
-      openId: 'mock_openid_the code is a mock one'
+      openId: 'mock_openid_the code is a mock one',
+      nicknameColor: ''
     };
     db.users.push(user);
   }
@@ -1032,7 +1219,8 @@ app.post('/api/auth/login', (req, res) => {
       avatarUrl: user.avatar,
       gender: user.gender || '',
       phone: user.phone || '',
-      points: Number(user.points || 0)
+      points: Number(user.points || 0),
+      nicknameColor: user.nicknameColor || ''
     }
   });
 });
@@ -1049,7 +1237,7 @@ app.post('/api/upload', uploadImage.single('file'), (req, res) => {
   });
 });
 
-app.post('/api/upload/user-avatar', uploadImage.single('file'), (req, res) => {
+app.post('/api/upload/user-avatar', uploadAvatar.single('file'), (req, res) => {
   if (!req.file) {
     res.status(400).json({ success: false, message: '缺少上传文件' });
     return;
@@ -1341,6 +1529,57 @@ app.post('/api/bootstrap', (req, res) => {
   });
 });
 
+app.get('/api/security-policy', (req, res) => {
+  const db = readDbWithCache();
+  const policy = ensureSecurityPolicy(db);
+  res.json({ success: true, policy });
+});
+
+app.post('/api/security-policy', (req, res) => {
+  const db = readDbWithCache();
+  const payload = req.body || {};
+  ensureSecurityPolicy(db);
+  const defaultPolicy = getDefaultSecurityPolicy();
+  const monitorWindowMinutes = Math.max(1, toInt(payload.monitorWindowMinutes, db.securityPolicy.monitorWindowMinutes || defaultPolicy.monitorWindowMinutes));
+  const nextBehaviors = {};
+  Object.keys(defaultPolicy.behaviors).forEach((actionKey) => {
+    const currentBehavior = db.securityPolicy.behaviors?.[actionKey] || defaultPolicy.behaviors[actionKey];
+    const inputBehavior = payload.behaviors?.[actionKey] || {};
+    nextBehaviors[actionKey] = {
+      ...currentBehavior,
+      enabled: inputBehavior.enabled === undefined ? currentBehavior.enabled : Boolean(inputBehavior.enabled),
+      windowMinutes: Math.max(1, toInt(inputBehavior.windowMinutes, currentBehavior.windowMinutes)),
+      maxRequests: Math.max(1, toInt(inputBehavior.maxRequests, currentBehavior.maxRequests)),
+      blockMinutes: Math.max(0, toInt(inputBehavior.blockMinutes, currentBehavior.blockMinutes)),
+      message: sanitizeString(inputBehavior.message || currentBehavior.message, 120),
+      autoDeleteComments: currentBehavior.autoDeleteComments
+    };
+  });
+  db.securityPolicy = {
+    monitorWindowMinutes,
+    behaviors: nextBehaviors
+  };
+  writeDb(db);
+  res.json({ success: true, policy: db.securityPolicy });
+});
+
+app.get('/api/security-anomalies', (req, res) => {
+  const db = readDbWithCache();
+  const policy = ensureSecurityPolicy(db);
+  const minutes = Math.max(1, toInt(req.query.minutes, policy.monitorWindowMinutes || 10));
+  const limit = Math.max(1, Math.min(500, toInt(req.query.limit, 200)));
+  const now = Date.now();
+  const startTs = now - minutes * 60 * 1000;
+  const anomalies = (db.securityAnomalies || [])
+    .filter((item) => {
+      const ts = new Date(item.detectedAt).getTime();
+      return Number.isFinite(ts) && ts >= startTs;
+    })
+    .sort((a, b) => new Date(b.detectedAt) - new Date(a.detectedAt))
+    .slice(0, limit);
+  res.json({ success: true, anomalies, minutes, total: anomalies.length });
+});
+
 app.get('/api/ui-config', (req, res) => {
   const db = readDbWithCache();
   if (!db.uiConfig) {
@@ -1478,6 +1717,28 @@ app.delete('/api/articles/:id', (req, res) => {
   db.articles.splice(index, 1);
   writeDb(db);
   res.json({ success: true });
+});
+
+app.delete('/api/articles', (req, res) => {
+  const db = readDbWithCache();
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ success: false, message: '请选择要删除的文章' });
+    return;
+  }
+  const idsToDelete = new Set(ids);
+  let deletedCount = 0;
+  
+  db.articles = db.articles.filter((article) => {
+    if (idsToDelete.has(article._id)) {
+      deletedCount++;
+      return false;
+    }
+    return true;
+  });
+  
+  writeDb(db);
+  res.json({ success: true, deletedCount });
 });
 
 app.get('/api/exchange-products', (req, res) => {
@@ -1686,6 +1947,36 @@ app.delete('/api/videos/:id', (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/videos', (req, res) => {
+  const db = readDbWithCache();
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ success: false, message: '请选择要删除的视频' });
+    return;
+  }
+  const idsToDelete = new Set(ids);
+  let deletedCount = 0;
+  const deletedVideoIds = [];
+  
+  db.videos = db.videos.filter((video) => {
+    if (idsToDelete.has(video._id)) {
+      deletedCount++;
+      deletedVideoIds.push(video._id);
+      // Delete video folder
+      const videoFolder = `videos/${video._id}`;
+      deleteFolder(videoFolder);
+      return false;
+    }
+    return true;
+  });
+  
+  // Delete related comments
+  db.comments = db.comments.filter((item) => !deletedVideoIds.includes(item.videoId));
+  
+  writeDb(db);
+  res.json({ success: true, deletedCount });
+});
+
 app.post('/api/videos/:id/like', (req, res) => {
   const db = readDbWithCache();
   const video = db.videos.find((item) => item._id === req.params.id);
@@ -1694,6 +1985,10 @@ app.post('/api/videos/:id/like', (req, res) => {
     return;
   }
   const userId = req.header('x-user-id') || 'wx_user_001';
+  const securityResult = enforceBehaviorSecurity(req, res, db, 'video_like', { userId });
+  if (securityResult.blocked) {
+    return;
+  }
   const likedBy = Array.isArray(video.likedBy) ? video.likedBy : [];
   const idx = likedBy.indexOf(userId);
   let liked = false;
@@ -1739,6 +2034,10 @@ app.post('/api/videos/:id/comments', (req, res) => {
   }
   const parentId = req.body.parentId || null;
   const userId = req.body.userId || req.header('x-user-id') || 'wx_user_001';
+  const securityResult = enforceBehaviorSecurity(req, res, db, 'comment', { userId });
+  if (securityResult.blocked) {
+    return;
+  }
   
   let user = db.users.find((item) => item._id === userId);
   let nickname = req.body.nickname || '微信用户';
@@ -1761,6 +2060,7 @@ app.post('/api/videos/:id/comments', (req, res) => {
     content,
     likes: 0,
     likedBy: [],
+    sourceIp: getClientIp(req),
     createdAt: now,
     updatedAt: now
   };
@@ -1785,6 +2085,53 @@ app.post('/api/videos/:id/comments', (req, res) => {
       }
     }
   });
+});
+
+app.delete('/api/comments/:commentId', (req, res) => {
+  const db = readDbWithCache();
+  const normalizeUserId = (value) => {
+    if (!value) return '';
+    if (typeof value === 'object') {
+      const objectId = value._id || value.id || value.userId;
+      return objectId ? String(objectId) : '';
+    }
+    return String(value);
+  };
+  const userId = normalizeUserId(req.header('x-user-id') || req.body?.userId || 'wx_user_001');
+  const targetComment = db.comments.find((item) => item._id === req.params.commentId);
+  if (!targetComment) {
+    res.status(404).json({ success: false, message: '评论不存在' });
+    return;
+  }
+  const commentOwnerId = normalizeUserId(targetComment.userId);
+  if (!commentOwnerId || commentOwnerId !== userId) {
+    res.status(403).json({ success: false, message: '仅支持删除自己发布的评论' });
+    return;
+  }
+  const idsToDelete = new Set([targetComment._id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    db.comments.forEach((item) => {
+      if (idsToDelete.has(item._id)) return;
+      if (idsToDelete.has(item.parentId)) {
+        idsToDelete.add(item._id);
+        changed = true;
+      }
+    });
+  }
+  const videoIdsToRefresh = new Set();
+  db.comments.forEach((item) => {
+    if (idsToDelete.has(item._id)) {
+      videoIdsToRefresh.add(item.videoId);
+    }
+  });
+  db.comments = db.comments.filter((item) => !idsToDelete.has(item._id));
+  videoIdsToRefresh.forEach((videoId) => {
+    refreshVideoCommentCount(db, videoId);
+  });
+  writeDb(db);
+  res.json({ success: true, deletedCount: idsToDelete.size });
 });
 
 app.get('/api/comments/:commentId/replies', (req, res) => {
@@ -1825,6 +2172,10 @@ app.post('/api/comments/:commentId/like', (req, res) => {
     return;
   }
   const userId = req.body.userId || req.header('x-user-id') || 'wx_user_001';
+  const securityResult = enforceBehaviorSecurity(req, res, db, 'comment_like', { userId });
+  if (securityResult.blocked) {
+    return;
+  }
   const likedBy = Array.isArray(comment.likedBy) ? comment.likedBy : [];
   const idx = likedBy.indexOf(userId);
   let liked = false;
@@ -1850,7 +2201,18 @@ app.get('/api/admin/comments', (req, res) => {
   if (videoId) {
     comments = comments.filter((item) => item.videoId === videoId);
   }
-  const { list, total, page: realPage, limit: realLimit } = pagination(comments, page, limit);
+  
+  const getUserInfo = (userId, fallbackNickname) => {
+    const user = db.users.find((u) => u._id === userId);
+    return user?.nickname || fallbackNickname || '微信用户';
+  };
+  
+  const listWithUpdatedNicknames = comments.map(comment => ({
+    ...comment,
+    nickname: getUserInfo(comment.userId, comment.nickname)
+  }));
+  
+  const { list, total, page: realPage, limit: realLimit } = pagination(listWithUpdatedNicknames, page, limit);
   res.json({ success: true, comments: list, total, page: realPage, limit: realLimit });
 });
 
@@ -2079,9 +2441,9 @@ app.get('/api/orders/export', (req, res) => {
   const statusMap = {
     pending: '待支付',
     paid: '已支付',
-    shipping: '配送中',
-    delivered: '已签收',
-    cancelled: '已取消'
+    cancelled: '已取消',
+    refund_pending: '售后中',
+    refunded: '已退款'
   };
   const shippingStatusMap = {
     unshipped: '未发货',
@@ -2371,6 +2733,11 @@ app.get('/api/orders/:id', (req, res) => {
 
 app.post('/api/orders', (req, res) => {
   const db = readDbWithCache();
+  const userId = req.body.userId || req.header('x-user-id') || 'wx_user_001';
+  const securityResult = enforceBehaviorSecurity(req, res, db, 'order_submit', { userId });
+  if (securityResult.blocked) {
+    return;
+  }
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   const now = new Date().toISOString();
   const totalPrice = req.body.totalPrice !== undefined
@@ -2380,7 +2747,7 @@ app.post('/api/orders', (req, res) => {
   const order = {
     _id: createId('order'),
     orderNumber: `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`,
-    userId: req.body.userId || 'wx_user_001',
+    userId,
     userName: req.body.userName || '微信用户',
     items,
     totalPrice,
@@ -2398,6 +2765,16 @@ app.post('/api/orders', (req, res) => {
   res.json({ success: true, order });
 });
 
+app.post('/api/forward-track', (req, res) => {
+  const db = readDbWithCache();
+  const userId = req.body.userId || req.header('x-user-id') || 'wx_user_001';
+  const securityResult = enforceBehaviorSecurity(req, res, db, 'forward', { userId });
+  if (securityResult.blocked) {
+    return;
+  }
+  res.json({ success: true, message: '转发记录成功' });
+});
+
 app.put('/api/orders/:id', (req, res) => {
   const db = readDbWithCache();
   const order = db.orders.find((item) => item._id === req.params.id);
@@ -2405,8 +2782,13 @@ app.put('/api/orders/:id', (req, res) => {
     res.status(404).json({ success: false, message: '订单不存在' });
     return;
   }
+  const nextStatus = req.body.status ?? order.status;
+  if (req.body.status !== undefined && nextStatus === 'refunded' && order.status !== 'refund_pending') {
+    res.status(400).json({ success: false, message: '仅退款申请中的订单可改为已退款' });
+    return;
+  }
   order.userId = req.body.userId ?? order.userId;
-  order.status = req.body.status ?? order.status;
+  order.status = nextStatus;
   order.address = req.body.address ?? order.address;
   order.shippingAddress = req.body.shippingAddress ?? order.shippingAddress ?? normalizeShippingAddress(order.address);
   order.items = Array.isArray(req.body.items) ? req.body.items : order.items;
@@ -2479,6 +2861,107 @@ app.post('/api/orders/:id/pay', (req, res) => {
   
   writeDb(db);
   res.json({ success: true, order, earnedPoints });
+});
+
+async function startWechatRefundProgram(order) {
+  const refundNumber = `RFD${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return {
+    success: true,
+    channel: 'wechat',
+    refundNumber,
+    completedAt: new Date().toISOString()
+  };
+}
+
+function rollbackOrderEarnedPoints(db, order) {
+  const user = db.users.find((item) => item._id === order.userId);
+  if (!user) return;
+  if (user.points === undefined) user.points = 0;
+  if (!user.pointsHistory) user.pointsHistory = [];
+  const earnedPoints = Math.floor(Number(order.totalPrice || 0));
+  if (earnedPoints <= 0) return;
+  user.points = Math.max(0, user.points - earnedPoints);
+  user.pointsHistory.unshift({
+    _id: createId('point'),
+    type: 'refund',
+    amount: earnedPoints,
+    description: `订单退款回退积分：${order.orderNumber || ''}`,
+    createdAt: new Date().toISOString()
+  });
+}
+
+function processOrderRefundAsync(orderId) {
+  (async () => {
+    const db = readDbWithCache();
+    const order = db.orders.find((item) => item._id === orderId);
+    if (!order || order.status !== 'refund_pending') {
+      return;
+    }
+    const hasTrackingNumber = String(order.trackingNumber || '').trim().length > 0;
+    const isUnshippedOrder = order.shippingStatus === 'unshipped';
+    if (!isUnshippedOrder || hasTrackingNumber) {
+      order.refundStatus = 'pending';
+      order.updatedAt = new Date().toISOString();
+      writeDb(db);
+      return;
+    }
+    try {
+      const result = await startWechatRefundProgram(order);
+      order.status = 'refunded';
+      order.refundStatus = 'success';
+      order.refundChannel = result.channel;
+      order.refundNumber = result.refundNumber;
+      order.refundCompletedAt = result.completedAt;
+      order.updatedAt = new Date().toISOString();
+      rollbackOrderEarnedPoints(db, order);
+      writeDb(db);
+    } catch (error) {
+      order.status = 'paid';
+      order.refundStatus = 'failed';
+      order.refundFailedReason = error.message || '退款失败';
+      order.updatedAt = new Date().toISOString();
+      writeDb(db);
+    }
+  })();
+}
+
+app.post('/api/orders/:id/refund', (req, res) => {
+  const db = readDbWithCache();
+  const order = db.orders.find((item) => item._id === req.params.id);
+  if (!order) {
+    res.status(404).json({ success: false, message: '订单不存在' });
+    return;
+  }
+  if (order.status === 'refunded') {
+    res.json({ success: true, message: '订单已退款', order });
+    return;
+  }
+  if (order.status === 'refund_pending') {
+    res.json({ success: true, message: '退款申请处理中', order });
+    return;
+  }
+  if (order.status !== 'paid') {
+    res.status(400).json({ success: false, message: '当前订单不可退款' });
+    return;
+  }
+  const now = new Date().toISOString();
+  const hasTrackingNumber = String(order.trackingNumber || '').trim().length > 0;
+  const isUnshippedOrder = order.shippingStatus === 'unshipped';
+  const shouldAutoRefund = isUnshippedOrder && !hasTrackingNumber;
+  order.status = 'refund_pending';
+  order.refundStatus = shouldAutoRefund ? 'processing' : 'pending';
+  order.refundRequestedAt = now;
+  order.updatedAt = now;
+  writeDb(db);
+  if (shouldAutoRefund) {
+    processOrderRefundAsync(order._id);
+  }
+  res.json({
+    success: true,
+    message: shouldAutoRefund ? '退款处理中' : '已提交退款申请',
+    order
+  });
 });
 
 app.get('/api/points/history', (req, res) => {
@@ -2631,6 +3114,40 @@ app.delete('/api/orders', (req, res) => {
   res.json({ success: true, deletedCount });
 });
 
+app.get('/api/orders/:id/logs', (req, res) => {
+  const db = readDbWithCache();
+  const orderId = req.params.id;
+  let logs = db.orderLogs || [];
+  if (orderId && orderId !== 'all') {
+    logs = logs.filter(log => log.orderId === orderId);
+  }
+  logs = [...logs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const logsWithOrderNumber = logs.map(log => {
+    const order = db.orders.find(o => o._id === log.orderId);
+    return {
+      ...log,
+      orderNumber: order ? order.orderNumber : '未知订单'
+    };
+  });
+  const { list, total, page, limit } = pagination(logsWithOrderNumber, req.query.page, req.query.limit || 50);
+  res.json({ success: true, logs: list, total, page, limit });
+});
+
+app.get('/api/orders/all/logs', (req, res) => {
+  const db = readDbWithCache();
+  let logs = db.orderLogs || [];
+  logs = [...logs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const logsWithOrderNumber = logs.map(log => {
+    const order = db.orders.find(o => o._id === log.orderId);
+    return {
+      ...log,
+      orderNumber: order ? order.orderNumber : '未知订单'
+    };
+  });
+  const { list, total, page, limit } = pagination(logsWithOrderNumber, req.query.page, req.query.limit || 100);
+  res.json({ success: true, logs: list, total, page, limit });
+});
+
 app.get('/api/users', (req, res) => {
   const db = readDbWithCache();
   const { limit, page, keyword } = req.query;
@@ -2690,6 +3207,7 @@ app.put('/api/users/:id', (req, res) => {
   if (req.body.phone !== undefined) user.phone = req.body.phone;
   if (req.body.userNumber !== undefined) user.userNumber = req.body.userNumber;
   if (req.body.address !== undefined) user.address = req.body.address;
+  if (req.body.nicknameColor !== undefined) user.nicknameColor = req.body.nicknameColor;
   
   user.updatedAt = new Date().toISOString();
   writeDb(db);
@@ -2733,6 +3251,7 @@ app.get('/api/export', (req, res) => {
 
 app.get('/api/points/users', (req, res) => {
   const db = readDbWithCache();
+  const { limit, page } = req.query;
   // Filter only users who have points or check-ins or are just regular users
   const users = db.users.map(u => ({
     _id: u._id,
@@ -2743,7 +3262,8 @@ app.get('/api/points/users', (req, res) => {
     checkInsCount: (u.checkIns || []).length
   })).sort((a, b) => (b.points || 0) - (a.points || 0));
   
-  res.json({ success: true, users });
+  const { list, total, page: realPage, limit: realLimit } = pagination(users, page, limit || users.length);
+  res.json({ success: true, users: list, total, page: realPage, limit: realLimit });
 });
 
 app.post('/api/points/user/:id/adjust', (req, res) => {
@@ -2799,6 +3319,7 @@ app.get('/api/points/user/:id/history', (req, res) => {
 
 app.get('/api/points/redemptions', (req, res) => {
   const db = readDbWithCache();
+  const { limit, page } = req.query;
   if (!db.redemptions) db.redemptions = [];
   
   // Enrich redemption data with user info
@@ -2811,7 +3332,8 @@ app.get('/api/points/redemptions', (req, res) => {
     };
   }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   
-  res.json({ success: true, redemptions });
+  const { list, total, page: realPage, limit: realLimit } = pagination(redemptions, page, limit || redemptions.length);
+  res.json({ success: true, redemptions: list, total, page: realPage, limit: realLimit });
 });
 
 app.get('/backend-console.html', (req, res) => {
@@ -3148,6 +3670,7 @@ async function parseDouyinUrl(url) {
     
     let videoUrl = '';
     let title = '抖音视频';
+    let cover = '';
     
     // 3. 尝试多种方式提取视频链接
     
@@ -3284,6 +3807,26 @@ async function parseDouyinUrl(url) {
       }
     }
 
+    const coverCandidates = [
+      $('meta[property="og:image"]').attr('content'),
+      $('meta[name="og:image"]').attr('content'),
+      $('meta[name="twitter:image"]').attr('content'),
+      $('meta[property="twitter:image"]').attr('content')
+    ];
+    for (const candidate of coverCandidates) {
+      if (!candidate) continue;
+      const value = String(candidate).trim();
+      if (!value) continue;
+      if (value.startsWith('//')) {
+        cover = `https:${value}`;
+      } else if (value.startsWith('http://')) {
+        cover = value.replace('http://', 'https://');
+      } else {
+        cover = value;
+      }
+      if (cover) break;
+    }
+
     // 尝试提取标题
     if (title === '抖音视频') {
         const titleTag = $('title').text();
@@ -3303,14 +3846,14 @@ async function parseDouyinUrl(url) {
         videoUrl = videoUrl.replace('http://', 'https://');
     }
     
-    logger.info('抖音链接解析完成', { url, videoUrl: videoUrl ? '已找到' : '未找到', title });
+    logger.info('抖音链接解析完成', { url, videoUrl: videoUrl ? '已找到' : '未找到', title, cover: cover ? '已找到' : '未找到' });
     
     if (!videoUrl) {
         // 如果实在找不到，可能是因为反爬虫，记录一段 HTML 以便调试 (生产环境可去掉)
         logger.warn('未找到视频链接，页面可能需要验证码或登录', { htmlPreview: html.substring(0, 500) });
     }
 
-    return { videoUrl, title };
+    return { videoUrl, title, cover };
   } catch (error) {
     logger.error('解析抖音链接失败', { url, error: error.message });
     throw error;
@@ -3342,6 +3885,7 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
     try {
       let title = '抖音视频';
       let videoUrlToDownload = url;
+      let fallbackCover = '';
       
       const isDouyinUrl = url.includes('douyin.com') || url.includes('v.douyin');
       
@@ -3355,6 +3899,9 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
             videoUrlToDownload = parsed.videoUrl;
             if (parsed.title && parsed.title !== '抖音视频') {
               title = parsed.title;
+            }
+            if (parsed.cover) {
+              fallbackCover = parsed.cover;
             }
           } else {
             // If parsing fails but no error thrown (should not happen with current logic), fallback
@@ -3378,7 +3925,7 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
       const filename = `${videoId}.mp4`;
       const relativeVideoPath = `${videoFolder}/${filename}`;
       let localVideoUrl = videoUrlToDownload;
-      let coverUrl = '';
+      let coverUrl = fallbackCover;
       
       try {
         ensureDir(path.join(UPLOAD_DIR, videoFolder));
@@ -3389,7 +3936,10 @@ app.post('/api/videos/parse-douyin', async (req, res) => {
         
         const videoPath = path.join(UPLOAD_DIR, relativeVideoPath);
         try {
-          coverUrl = await generateVideoCover(videoPath, filename);
+          const generatedCover = await generateVideoCover(videoPath, filename);
+          if (generatedCover) {
+            coverUrl = generatedCover;
+          }
         } catch (coverError) {
           logger.warn('生成封面失败', { error: coverError.message });
         }
@@ -3488,7 +4038,16 @@ app.get('/', (req, res) => {
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    const message = err.code === 'LIMIT_FILE_SIZE' ? '上传文件过大' : '上传失败';
+    let message = '上传失败';
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      if (req.path === '/api/upload/user-avatar' || req.path === '/api/upload/publisher-avatar') {
+        message = '头像文件过大，请选择小于5MB的图片';
+      } else if (req.path.includes('/upload/video')) {
+        message = '视频文件过大，请选择小于500MB的视频';
+      } else {
+        message = '上传文件过大';
+      }
+    }
     res.status(400).json({
       success: false,
       message

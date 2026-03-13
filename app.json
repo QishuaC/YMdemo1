@@ -16,7 +16,8 @@
     "pages/address/address",
     "pages/points-exchange/points-exchange",
     "pages/points-history/points-history",
-    "pages/yixun/yixun"
+    "pages/yixun/yixun",
+    "pages/customer-service/customer-service"
   ],
   "window": {
     "backgroundTextStyle": "light",
