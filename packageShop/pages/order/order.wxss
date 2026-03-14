@@ -180,78 +180,72 @@
 }
 
 .shipping-info {
-  background: #fff7e6;
-  border-radius: 12rpx;
-  padding: 20rpx;
+  background: #f6ffed;
+  border-radius: 16rpx;
+  padding: 24rpx;
   margin-bottom: 20rpx;
-  border: 1rpx solid #ffd591;
+  border: 1rpx solid #b7eb8f;
+  box-shadow: 0 2rpx 8rpx rgba(183, 235, 143, 0.2);
 }
 
 .shipping-info-refund {
-  background: #fff4e6;
-  border-color: #ffc069;
+  background: #fffbe6;
+  border-color: #ffe58f;
 }
 
-.shipping-status {
+.shipping-header {
   display: flex;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx dashed rgba(0, 0, 0, 0.1);
 }
 
-.shipping-label {
-  font-size: 26rpx;
-  color: #666;
-  margin-right: 10rpx;
+.shipping-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
-.shipping-status-text {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #666;
+.shipping-icon {
+  font-size: 36rpx;
+  line-height: 1;
 }
 
-.shipping-status-text.shipped {
-  color: #07c160;
-}
-
-.shipping-status-text.refund-pending {
-  color: #fa8c16;
+.shipping-text {
+  font-size: 30rpx;
   font-weight: 600;
+  color: #389e0d;
 }
 
-.tracking-number {
+.shipping-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.shipping-row {
   display: flex;
   align-items: center;
 }
 
-.tracking-label {
+.row-label {
   font-size: 26rpx;
-  color: #666;
-  margin-right: 10rpx;
+  color: #8c8c8c;
+  width: 160rpx;
 }
 
-.tracking-value {
-  font-size: 26rpx;
+.row-value {
+  font-size: 28rpx;
+  color: #262626;
   font-weight: 500;
-  color: #333;
+  flex: 1;
+}
+
+.row-value.monospace {
   font-family: monospace;
-}
-
-.shipped-time {
-  display: flex;
-  align-items: center;
-  margin-top: 12rpx;
-}
-
-.shipped-label {
-  font-size: 26rpx;
-  color: #666;
-  margin-right: 10rpx;
-}
-
-.shipped-value {
-  font-size: 26rpx;
-  font-weight: 500;
+  font-size: 30rpx;
+  letter-spacing: 1rpx;
   color: #333;
 }
 

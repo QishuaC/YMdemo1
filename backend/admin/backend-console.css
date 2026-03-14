@@ -625,3 +625,16 @@ tbody tr:last-child td {
   justify-content: space-between;
   margin-bottom: 12px;
 }
+
+.order-number-cell {
+  color: #2580ff;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+}
+
+.order-number-cell:hover {
+  color: #1a5fd1;
+  text-decoration-style: solid;
+}

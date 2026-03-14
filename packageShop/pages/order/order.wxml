@@ -51,13 +51,21 @@
       </view>
       
       <view class="shipping-info {{item.status === 'refund_pending' ? 'shipping-info-refund' : ''}}" wx:if="{{item.shippingStatus === 'shipped' && item.status !== 'refund_pending' && item.status !== 'refunded'}}">
-        <view class="shipping-status">
-          <text class="shipping-label">物流单号：</text>
-          <text class="shipping-status-text shipped">{{item.trackingNumber || '暂无'}}</text>
+        <view class="shipping-header">
+            <view class="shipping-status-badge">
+                <text class="shipping-icon">🚚</text>
+                <text class="shipping-text">已发货</text>
+            </view>
         </view>
-        <view class="shipped-time" wx:if="{{item.shippedAt}}">
-          <text class="shipped-label">发货时间：</text>
-          <text class="shipped-value">{{item.shippedAt}}</text>
+        <view class="shipping-content">
+            <view class="shipping-row" wx:if="{{item.trackingNumber}}">
+                <text class="row-label">物流单号：</text>
+                <text class="row-value monospace">{{item.trackingNumber}}</text>
+            </view>
+            <view class="shipping-row" wx:if="{{item.shippedAt}}">
+                <text class="row-label">发货时间：</text>
+                <text class="row-value">{{item.shippedAt}}</text>
+            </view>
         </view>
       </view>
       

@@ -226,6 +226,35 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function showCopyToast(message) {
+  let toast = document.getElementById('copyToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'copyToast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = '1';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+  }, 1500);
+}
+
 function formatDate(input) {
   if (!input) return '-';
   const d = new Date(input);
@@ -511,7 +540,7 @@ function rowTemplate(moduleName, row) {
     return `
       <tr>
         <td><input type="checkbox" class="order-checkbox" data-id="${row._id}" ${isChecked ? 'checked' : ''}></td>
-        <td>${row.orderNumber || '-'}</td>
+        <td><span class="order-number-cell" data-order-number="${row.orderNumber || ''}" title="点击复制订单号">${row.orderNumber || '-'}</span></td>
         <td>${row.userNumber || '-'}</td>
         <td class="user-name-cell">${row.userName || '-'}</td>
         <td class="product-name-cell">${productNames}</td>
@@ -2089,6 +2118,32 @@ function bindEvents() {
   
   document.body.addEventListener('click', async (event) => {
     const target = event.target;
+    
+    if (target.classList.contains('order-number-cell')) {
+      const orderNumber = target.dataset.orderNumber;
+      if (orderNumber && orderNumber !== '-') {
+        try {
+          await navigator.clipboard.writeText(orderNumber);
+          showCopyToast('订单号已复制');
+        } catch (err) {
+          const textArea = document.createElement('textarea');
+          textArea.value = orderNumber;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-9999px';
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            showCopyToast('订单号已复制');
+          } catch (e) {
+            alert('复制失败，请手动复制');
+          }
+          document.body.removeChild(textArea);
+        }
+      }
+      return;
+    }
+    
     if (target.classList.contains('view-comments-link')) {
       const videoId = target.dataset.videoId;
       state.commentVideoFilter = videoId;

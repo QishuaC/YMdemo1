@@ -70,7 +70,7 @@ Page({
       if (res.success && Array.isArray(res.orders)) {
         const orderList = res.orders.map((order) => {
           const statusText = order.status === 'paid' && order.shippingStatus === 'shipped'
-            ? (order.trackingNumber || '已发货')
+            ? '已发货'
             : (statusMap[order.status] || order.status);
           return {
             ...order,
@@ -104,7 +104,7 @@ Page({
       ...order,
       id: order.id,
       statusText: order.status === 'paid' && order.shippingStatus === 'shipped'
-        ? (order.trackingNumber || '已发货')
+        ? '已发货'
         : (statusMap[order.status] || order.status),
       shippingStatusText: order.status === 'refund_pending'
         ? '退款申请中'
