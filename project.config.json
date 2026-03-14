@@ -3,32 +3,32 @@
   "packOptions": {
     "ignore": [
       {
-        "type": "folder",
-        "value": "backend"
+        "value": "backend",
+        "type": "folder"
       },
       {
-        "type": "folder",
-        "value": "outputs"
+        "value": "outputs",
+        "type": "folder"
       },
       {
-        "type": "folder",
-        "value": ".runtime-data"
+        "value": ".runtime-data",
+        "type": "folder"
       },
       {
-        "type": "file",
-        "value": "code-reviewer.js"
+        "value": "code-reviewer.js",
+        "type": "file"
       },
       {
-        "type": "file",
-        "value": "continuous-reviewer.js"
+        "value": "continuous-reviewer.js",
+        "type": "file"
       },
       {
-        "type": "file",
-        "value": "*.md"
+        "value": "*.md",
+        "type": "file"
       },
       {
-        "type": "glob",
-        "value": ".*"
+        "value": ".*",
+        "type": "glob"
       }
     ],
     "include": []
@@ -78,7 +78,7 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.14.3",
-  "appid": "touristappid",
+  "appid": "wx831b939201e55c39",
   "projectname": "DEMO202631201",
   "isGameTourist": false,
   "condition": {

@@ -1,10 +1,10 @@
 {
   "pages": [
-    "pages/index/index",
+    "pages/yixun/yixun",
     "pages/shop/shop",
     "pages/member/member",
     "pages/login/login",
-    "pages/yixun/yixun",
+    "pages/yiwen/yiwen",
     "pages/customer-service/customer-service"
   ],
   "subPackages": [
@@ -49,12 +49,12 @@
     "backgroundColor": "#ffffff",
     "list": [
       {
-        "pagePath": "pages/index/index",
-        "text": "义闻"
-      },
-      {
         "pagePath": "pages/yixun/yixun",
         "text": "义讯"
+      },
+      {
+        "pagePath": "pages/yiwen/yiwen",
+        "text": "义闻"
       },
       {
         "pagePath": "pages/shop/shop",
@@ -67,6 +67,7 @@
     ]
   },
   "usingComponents": {},
+  "lazyCodeLoading": "requiredComponents",
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

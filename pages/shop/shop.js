@@ -196,7 +196,7 @@ Page({
     const banner = this.data.banners.find(b => String(b.id) === String(bannerId));
     if (!banner) return;
     if (banner.targetPage) {
-      if (banner.targetPage === '/pages/index/index' || banner.targetPage === '/pages/yixun/yixun' || banner.targetPage === '/pages/shop/shop' || banner.targetPage === '/pages/member/member') {
+      if (banner.targetPage === '/pages/yiwen/yiwen' || banner.targetPage === '/pages/yixun/yixun' || banner.targetPage === '/pages/shop/shop' || banner.targetPage === '/pages/member/member') {
         wx.switchTab({ url: banner.targetPage });
       } else {
         wx.navigateTo({ url: banner.targetPage });
@@ -275,7 +275,7 @@ Page({
 
   goToCart() {
     wx.navigateTo({
-      url: '/packageShop/pages/cart/cart'
+      url: '/packageShop/pages/order/order'
     });
   },
 

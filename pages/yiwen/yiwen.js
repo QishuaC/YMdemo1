@@ -21,7 +21,7 @@ Page({
   onShow() {
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) {
-      tabBar.setData({ selected: 0 });
+      tabBar.setData({ selected: 1 });
     }
     if (app.globalData.uiConfig && app.globalData.uiConfig.banner) {
       this.setData({

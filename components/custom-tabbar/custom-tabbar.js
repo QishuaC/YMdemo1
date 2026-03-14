@@ -3,7 +3,7 @@ Component({
     selected: 0,
     list: [
       {
-        pagePath: '/pages/index/index',
+        pagePath: '/pages/yiwen/yiwen',
         text: '义闻',
         icon: '🏠'
       },

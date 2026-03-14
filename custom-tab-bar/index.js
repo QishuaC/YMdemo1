@@ -4,8 +4,8 @@ Component({
     selected: 0,
     clickedIndex: -1,
     list: [
-      { pagePath: '/pages/index/index', text: '义闻', icon: '🏠' },
       { pagePath: '/pages/yixun/yixun', text: '义讯', icon: '📺' },
+      { pagePath: '/pages/yiwen/yiwen', text: '义闻', icon: '🏠' },
       { pagePath: '/pages/shop/shop', text: '义商', icon: '🛒' },
       { pagePath: '/pages/member/member', text: '我的', icon: '👤' }
     ]
@@ -37,8 +37,8 @@ Component({
       }
 
       const subPageMap = {
-        '/pages/article/article': '/pages/index/index',
-        '/pages/article/detail': '/pages/index/index',
+        '/pages/article/article': '/pages/yiwen/yiwen',
+        '/pages/article/detail': '/pages/yiwen/yiwen',
         '/pages/product/product': '/pages/shop/shop',
         '/pages/cart/cart': '/pages/shop/shop',
         '/pages/payment/payment': '/pages/shop/shop',

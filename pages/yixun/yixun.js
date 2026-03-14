@@ -35,7 +35,7 @@ Page({
   onShow() {
     const tabBar = typeof this.getTabBar === 'function' ? this.getTabBar() : null;
     if (tabBar) {
-      tabBar.setData({ selected: 1 });
+      tabBar.setData({ selected: 0 });
     }
     this.setData({
       isMember: app.globalData.isMember || false

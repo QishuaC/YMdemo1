@@ -113,6 +113,13 @@ const auth = {
   async login(userAvatar, userNickName) {
     return new Promise((resolve, reject) => {
       wx.showLoading({ title: '登录中...', mask: true });
+      const app = getApp();
+      const backendDisabled = app && app.globalData ? app.globalData.disableBackendRequests : false;
+      if (backendDisabled) {
+        wx.hideLoading();
+        reject(new Error('当前运行环境不支持登录到后端'));
+        return;
+      }
       
       wx.login({
         success: async (res) => {

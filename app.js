@@ -4,6 +4,8 @@ const { mockArticles, mockVideos, mockProducts } = require('./data/mock.js');
 App({
   globalData: {
     baseUrl: 'http://localhost:3000',
+    disableBackendRequests: false,
+    runtimeAppId: '',
     userInfo: null,
     cart: [],
     orders: [],
@@ -37,8 +39,8 @@ App({
         }
       ],
       tabBar: [
-        { pagePath: '/pages/index/index', text: '义闻', icon: '🏠' },
         { pagePath: '/pages/yixun/yixun', text: '义讯', icon: '📺' },
+        { pagePath: '/pages/yiwen/yiwen', text: '义闻', icon: '🏠' },
         { pagePath: '/pages/shop/shop', text: '义商', icon: '🛒' },
         { pagePath: '/pages/member/member', text: '我的', icon: '👤' }
       ],
@@ -48,12 +50,24 @@ App({
   },
 
   onLaunch() {
+    this.initRuntimeEnv();
     this.checkLoginStatus();
     this.loadUiConfig();
     this.loadCart();
     this.loadMemberData();
     this.loadOrders();
     this.initBackendData();
+  },
+
+  initRuntimeEnv() {
+    let appId = '';
+    try {
+      const accountInfo = wx.getAccountInfoSync && wx.getAccountInfoSync();
+      appId = accountInfo && accountInfo.miniProgram ? accountInfo.miniProgram.appId || '' : '';
+    } catch (e) {}
+    const disableBackendRequests = !appId || appId === 'touristappid';
+    this.globalData.runtimeAppId = appId;
+    this.globalData.disableBackendRequests = disableBackendRequests;
   },
 
   async checkLoginStatus() {
@@ -66,6 +80,9 @@ App({
     this.globalData.token = isLoggedIn ? token : null;
     
     if (isLoggedIn) {
+      if (this.globalData.disableBackendRequests) {
+        return;
+      }
       await this.loadAddresses();
       await this.syncMemberProfile();
       return;
@@ -78,23 +95,49 @@ App({
     if (cached) {
       this.globalData.uiConfig = { ...this.globalData.uiConfig, ...cached };
     }
+    this.globalData.uiConfig.tabBar = this.normalizeTabBar(this.globalData.uiConfig.tabBar);
     
-    // Asynchronous update
     this.request({
       url: '/api/ui-config',
       method: 'GET'
     }).then(res => {
       if (res && res.success && res.config) {
         this.globalData.uiConfig = { ...this.globalData.uiConfig, ...res.config };
+        this.globalData.uiConfig.tabBar = this.normalizeTabBar(this.globalData.uiConfig.tabBar);
         wx.setStorageSync('uiConfig', this.globalData.uiConfig);
-        // Notify pages if needed, or rely on pages reading globalData on show
       }
     }).catch(err => {
       console.error('Failed to load UI config:', err);
     });
   },
 
+  normalizeTabBar(tabBar) {
+    const fallback = [
+      { pagePath: '/pages/yixun/yixun', text: '义讯', icon: '📺' },
+      { pagePath: '/pages/yiwen/yiwen', text: '义闻', icon: '🏠' },
+      { pagePath: '/pages/shop/shop', text: '义商', icon: '🛒' },
+      { pagePath: '/pages/member/member', text: '我的', icon: '👤' }
+    ];
+    const source = Array.isArray(tabBar) ? tabBar : [];
+    const getKey = (path = '') => String(path).replace(/^\//, '');
+    const map = source.reduce((acc, item) => {
+      const key = item && item.pagePath ? getKey(item.pagePath) : '';
+      if (key) acc[key] = item;
+      return acc;
+    }, {});
+    return fallback.map((item) => {
+      const key = getKey(item.pagePath);
+      const matched = map[key];
+      if (!matched) return item;
+      const normalizedPath = String(matched.pagePath || '').startsWith('/') ? matched.pagePath : `/${key}`;
+      return { ...matched, pagePath: normalizedPath };
+    });
+  },
+
   request(options) {
+    if (this.globalData.disableBackendRequests) {
+      return Promise.reject(new Error('当前运行环境不支持后端请求'));
+    }
     const baseUrl = this.globalData.baseUrl;
     const userId = auth.getUserId();
     const maxRetries = options.retry || 0;
@@ -138,6 +181,7 @@ App({
   },
 
   initBackendData() {
+    if (this.globalData.disableBackendRequests) return;
     const bootstrapped = wx.getStorageSync('backendBootstrapped');
     if (bootstrapped) return;
     const orders = (this.globalData.orders || []).map((order) => ({

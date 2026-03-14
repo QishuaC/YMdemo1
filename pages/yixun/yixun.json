@@ -2,5 +2,8 @@
   "usingComponents": {
     "comment-popup": "/components/comment-popup/comment-popup"
   },
+  "componentPlaceholder": {
+    "comment-popup": "view"
+  },
   "navigationStyle": "custom"
 }
